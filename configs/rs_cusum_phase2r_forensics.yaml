@@ -1,0 +1,160 @@
+# Phase 2R-A is a null-only forensic localization study, not a method revision.
+protocol:
+  name: "RS-CUSUM-RL Phase 2R-A Null Failure Localization"
+  diagnostic_label: "phase2r-a-forensics"
+  frozen_on: "2026-08-29"
+  status: "forensic_protocol_predeclared"
+  parent_method: "1.0.1-phase1"
+  parent_phase2_gate: "PHASE_2_METHOD_REVISION_REQUIRED"
+  formal_ohiot1dm_gate: "CLOSED"
+  phase3_allowed: false
+  alternatives_allowed: false
+  method_revision_allowed: false
+
+parent_inputs:
+  main_config: "configs/rs_cusum_main.yaml"
+  phase2_config: "configs/rs_cusum_phase2_pilot.yaml"
+  phase1_method_spec: "report/rs_cusum_phase1_method_spec.md"
+  phase2_failure_forensics: "results_rs_cusum/phase2/failure_forensics.json"
+
+dgp:
+  scenario: "N0_complete_balanced_null"
+  master_seed: 2026082901
+  patients: 12
+  horizon_transitions: 240
+  analysis_start: 48
+  analysis_end: 240
+  state_dimension: 21
+  action_support: "Phase-2 N0 behavior policy, target prevalence 0.50"
+  missingness: "none"
+  patient_dominance: "none"
+  changepoint: "none"
+  gamma: 0.9825931938526898
+  ridge_alpha_primary: 1.0
+  fqi_max_iterations: 800
+  fqi_tolerance: 1.0e-5
+
+fixed_point:
+  candidate: 144
+  construction: "analysis midpoint, 48 + round_half_up(0.50*(240-48))"
+  evaluation_grid_rule: "independent state-only N0 reference panel; deterministic patient-balanced Phase-2 grid rule"
+  evaluation_grid_seed: 9173
+  evaluation_reference_dataset_seed: 2026082902
+  primary_reference_states: 32
+  fixed_grid_file: "results_rs_cusum/phase2r/fixed_evaluation_grid.npz"
+  single_point_index: 0
+  single_point_action: 0
+  forbidden_grid_inputs: ["reward", "Q", "statistic", "p_value", "changepoint"]
+
+candidate_grid:
+  fractions: [0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80]
+  candidates_for_base_window: [86, 106, 125, 144, 163, 182, 202]
+  boundary_scaling: "harmonic_active_patients"
+  support: "primary"
+
+decomposition:
+  D0: "single candidate + single fixed point + absolute unnormalized contrast; no boundary factor"
+  D1: "single candidate + single fixed point + fixed-observed-variance studentization; no boundary factor"
+  D2: "single candidate + fixed 64-point evaluation grid maximum + fixed observed variance"
+  D3: "seven fixed candidates + single fixed point + studentization + harmonic boundary + max_u"
+  D4: "frozen Phase-1 normalized maximum over fixed 64 points and seven candidates"
+  truth_replicates: 1000
+  max_decomposition_replicates: 400
+  decomposition_bootstrap_draws: 399
+
+reference_target:
+  seed: 2026082903
+  patients: 200
+  horizon_transitions: 960
+  analysis_start: 48
+  estimator: "normalized pooled FQI (equal length, equivalent population weighting)"
+  beta0_scope: "alpha=1 linearization diagnostic only"
+
+truth_storage:
+  save_beta_left_right: true
+  save_D_V_sqrtV: true
+  save_patient_scores_eta: true
+  save_W: true
+  save_design_matrices: true
+  design_dtype: "float32"
+  save_greedy_frequencies: true
+
+linearization:
+  primary: "population-reference active-set W0 and patient estimating equations evaluated at beta0"
+  equation: "beta_hat-beta0 approximately W0^{-1}[mean_i g_i(beta0)-alpha*beta0]"
+  metrics: ["correlation", "slope", "RMSE", "relative_RMSE", "variance_ratio", "sign_agreement"]
+
+jacobian:
+  equation: "F(beta)=sum_j w_j x_j[r_j+gamma*max_a Q(s_next_j,a;beta)-x_j'beta]-alpha*beta"
+  finite_difference_step: 1.0e-6
+  checked_truth_replicates: 100
+
+greedy_nonsmoothness:
+  q_gap_thresholds: [1.0e-6, 1.0e-5, 1.0e-4, 1.0e-3, 1.0e-2]
+  perturbation_epsilons: [1.0e-6, 1.0e-5, 1.0e-4, 1.0e-3]
+  directions: 8
+  direction_seed: 2026082904
+  summaries: ["mean_switch_fraction", "maximum_switch_fraction"]
+
+alpha_diagnostic:
+  values: [0.0, 0.01, 0.1, 1.0, 10.0]
+  replicates: 300
+  bootstrap_draws: 399
+  diagnostic_only: true
+
+n_scaling:
+  patient_counts: [12, 24, 50, 100]
+  horizon_transitions: 240
+  replicates: 300
+  bootstrap_draws: 399
+
+t_scaling:
+  patients: 12
+  horizons: [120, 240, 480, 960]
+  analysis_start: 48
+  replicates: 300
+  bootstrap_draws: 399
+
+bootstrap_forensics:
+  datasets: 50
+  draws: 1999
+  finite_p: "(1 + count(T_star >= T_observed))/(B+1)"
+  multiplier_distributions: ["gaussian", "rademacher", "webb_six_point"]
+  webb_support: [-1.224744871391589, -1.0, -0.707106781186548, 0.707106781186548, 1.0, 1.224744871391589]
+  variance_versions:
+    B0: "frozen observed HC1 cluster variance"
+    B1: "draw-specific HC1 variance of centered multiplier-weighted patient contributions"
+    B2: "leave-one-patient-out jackknife pseudo-contributions and jackknife variance"
+    B3: "DIAGNOSTIC_ONLY adapted CR2-inspired scalar cluster-leverage adjustment Delta_i/sqrt(1-h_i), recentered; no standard CR2 theorem claimed"
+
+full_refit_prototype:
+  run_only_after_earlier_diagnostics: true
+  datasets: 30
+  draws: 199
+  multiplier: "gaussian patient cluster"
+  null_fit: "common patient-balanced FQI on the full analysis window"
+  residual_centering: "subtract each patient's scalar mean TD residual over the full analysis window"
+  ridge_offset: "v_ridge solves (X'WX) v_ridge = alpha*beta_common under full-window patient-balanced weights"
+  pseudo_reward: "x*beta_common - gamma*max Q_common(next) + x*v_ridge + xi_patient*centered_TD_residual"
+  states_actions_fixed: true
+  cluster_dependence: "one multiplier per patient over the full trajectory"
+  refit: "left/right FQI and draw-specific HC1 variance"
+  label: "restricted-null common-Q fixed-design residual wild bootstrap prototype; DIAGNOSTIC_ONLY"
+
+original_compatible:
+  replicates: 400
+  bootstrap_draws: 399
+  estimator: "normalized pooled FQI"
+  cluster_unit: "transition"
+  decomposition: ["D0", "D1", "D2", "D3", "D4"]
+
+inference:
+  nominal_alpha: 0.05
+  truth_confidence_level: 0.95
+  oracle_quantiles: [0.90, 0.95, 0.99]
+  no_power_or_cp: true
+
+outputs:
+  root: "results_rs_cusum/phase2r"
+  report: "report/rs_cusum_phase2r_failure_localization_report.md"
+  replicate_format: "csv plus binary NumPy arrays for high-dimensional forensic objects"

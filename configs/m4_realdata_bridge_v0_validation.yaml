@@ -1,0 +1,57 @@
+protocol:
+  name: "M4 Real-Data Bridge v0 validation design"
+  version: "1.0.0-implementation-freeze"
+  frozen_on: "2026-09-03"
+  status: "implementation_frozen_before_results"
+  no_ohio_cusum: true
+  no_ohio_bootstrap: true
+  observed_statistic_changed: false
+  locked_m4_source_sha256: "EC7E7DA7D8625736CEAC2B872CD739DEBA29792CD535B8AD533D5266251AF977"
+bridge:
+  classification: "M4 extension"
+  observed_side: "unchanged patient-balanced RS-CUSUM, fixed outcome-blind U_adm and evaluation grid"
+  null: "pooled hierarchical stationary fitted Markov null; all parameters fit once on full pre-specified analysis window, never by candidate or side"
+  censoring: "condition on fixed patient-specific monotone termination T_i; no re-entry and no interior mask"
+  regenerate_each_draw: ["initial state conditional on patient baseline", "patient random effects", "actions from fitted propensity", "state innovations recursively", "binary TIR rewards from fitted Bernoulli model"]
+  preserve_each_draw: ["patient IDs", "N", "T_i/censoring schedule", "analysis clock", "MDP definition", "fixed U_adm", "evaluation grid", "gamma", "ridge", "statistic"]
+  support: "screen observed U_adm outcome-blind; every bridge draw re-screens and is invalid if an observed admissible candidate is lost"
+  bootstrap_unit: "one generated clustered trajectory per original patient; patient random effects are resampled/generated once per patient, not independently per transition"
+  assumption: "censoring is conditionally non-informative given retained history and fixed T_i"
+validation:
+  outer_replicates_per_scenario: 200
+  bootstrap_draws_per_outer: 199
+  alpha: 0.05
+  scenarios:
+    A_complete_balanced_baseline: {horizon: 240, termination: "all_240", action_target: 0.50, patient_effect_sd: 0.15}
+    B_unequal_followup_monotone_censoring: {horizon: 240, termination: "four_144_four_192_four_240", action_target: 0.50, patient_effect_sd: 0.15}
+    C_action_imbalance_patient_heterogeneity: {horizon: 240, termination: "all_240", action_target: 0.12, patient_effect_sd: 0.55}
+    D_combined_ohio_like_stress: {horizon: 240, termination: "four_144_four_192_four_240", action_target: 0.12, patient_effect_sd: 0.55}
+  dgp:
+    patients: 12
+    state_dimension: 21
+    analysis_start: 48
+    state_ar: 0.72
+    state_action: 0.18
+    state_noise_sd: 0.45
+    reward_state: 0.65
+    reward_action: -0.35
+    reward_intercept: 0.20
+    propensity_state: 0.35
+  candidates: [0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80]
+  evaluation_states: 32
+  fitting: {ridge_alpha: 1.0, logistic_C: 1.0, fqi_max_iterations: 800, fqi_tolerance: 1.0e-5}
+  class_ab_support: {minimum_action_count_each_side: 22, minimum_active_patients_each_side: 2, minimum_both_side_patients: 2, minimum_unique_patients_each_side_action: 2, maximum_patient_share: 0.95}
+seeds:
+  master_seed: 2026090301
+  primary_gate:
+    D4_type1_005_max: 0.10
+    D0_to_D4_type1_005_max: 0.13
+    outer_failure_rate_max: 0.01
+    draw_failure_rate_max: 0.01
+    support_rejection_rate_max: 0.01
+    testable_fraction_min: 0.99
+    critical_value_requirement: "positive and finite for every valid outer; no fallback, clipping, or candidate substitution"
+  notes:
+    - "R=200/B=199 and the .10 D4/type-I and .01 failure thresholds inherit Phase-2R-H engineering/primary practice."
+    - "Critical-value dispersion is reported secondary; no unvalidated post-hoc numerical dispersion threshold is added."
+    - "No power criterion is part of this validation."

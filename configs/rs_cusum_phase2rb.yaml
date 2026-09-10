@@ -1,0 +1,193 @@
+# Phase 2R-B confirmatory inference-only revision protocol.
+protocol:
+  name: "RS-CUSUM-RL Phase 2R-B Inference Revision Confirmatory Study"
+  label: "phase2rb-confirmatory"
+  frozen_on: "2026-08-29"
+  parent_method: "1.0.1-phase1"
+  parent_gate: "ROOT_CAUSE_LOCALIZED"
+  candidate_version_scope: "1.0.2 inference-only revision; not yet established"
+  phase3_gate: "CLOSED"
+  formal_ohiot1dm_gate: "CLOSED"
+  alternatives_allowed: false
+  power_allowed: false
+  changepoint_performance_allowed: false
+  observed_method_components_frozen: true
+
+frozen_observed_method:
+  risk_set: "Phase-1 elapsed-time dynamic risk set"
+  reentry: "120 minute / 24-edge post-gap burn-in"
+  support: "primary"
+  estimator: "patient-balanced normalized Ridge FQI"
+  gamma: 0.9825931938526898
+  ridge_alpha: 1.0
+  fqi_max_iterations: 800
+  fqi_tolerance: 1.0e-5
+  influence: "Bellman fixed-point Jacobian and frozen Delta_i"
+  scaling: "harmonic_active_patients"
+  evaluation_grid_file: "results_rs_cusum/phase2r/fixed_evaluation_grid.npz"
+  evaluation_points: 64
+  candidate_fractions: [0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80]
+  base_candidates: [86, 106, 125, 144, 163, 182, 202]
+  single_point_index: 0
+
+fresh_seeds:
+  master_seed: 2026083001
+  seed_file: "results_rs_cusum/phase2rb/frozen_seed_lists.npz"
+  rule: "SHA-256 stable seeds from master, stage, scenario, replicate; all disjoint from Phase 2R-A"
+  rb2_generated_and_hashed_before_rb1: true
+
+arms:
+  M0:
+    label: "frozen_baseline"
+    multiplier: "gaussian"
+    contributions: "fixed observed patient influence"
+    variance: "fixed observed HC1"
+    refit: false
+    eligible_as_revision: false
+  M1:
+    label: "influence_draw_specific_studentization"
+    multiplier_primary: "gaussian"
+    numerator: "sum_i xi_i Delta_i(u,z)"
+    variance: "HC1 variance of xi_i Delta_i(u,z) after across-patient centering within each draw/u/z"
+    observed_variance: "unchanged observed HC1"
+    refit: false
+    sensitivity: ["rademacher", "webb_six_point"]
+  M2:
+    label: "restricted_null_common_Q_full_refit"
+    multiplier_primary: "gaussian"
+    common_model: "patient-balanced FQI on the complete observed analysis window"
+    residual_centering: "subtract patient-specific scalar mean common-model TD residual"
+    ridge_offset: "v solves full-window patient-balanced Gram * v = alpha * beta_common"
+    pseudo_reward: "x beta_common - gamma max_a Q_common(s_next,a) + x v + xi_patient delta_centered"
+    states_actions_fixed: true
+    left_right_source_model: "the same common beta and pseudo-reward generator"
+    per_draw_refit: ["left FQI", "right FQI", "Bellman scores", "W", "Delta_i", "V", "joint statistic"]
+    sensitivity: ["rademacher", "webb_six_point"]
+  M0_global_scale:
+    label: "negative_control_only"
+    source: "inverse of Phase 2R-A RS D4 mean-bootstrap-q95/oracle-q95 ratio"
+    frozen_factor: 1.66327104534037
+    source_ratio: 0.6012249192947142
+    eligible_as_revision: false
+
+decomposition:
+  D0: "single midpoint candidate, single fixed point, absolute unnormalized contrast"
+  D1: "D0 with observed/draw-specific studentization as defined by arm"
+  D2: "single midpoint candidate, maximum over fixed 64-point grid"
+  D3: "single fixed point, maximum over fixed seven candidates with harmonic boundary"
+  D4: "joint maximum over fixed seven candidates x fixed 64 points with harmonic boundary"
+
+stages:
+  RB0:
+    replicates: 20
+    bootstrap_draws: 199
+    arms: ["M0", "M1", "M2"]
+    multiplier: "gaussian"
+    engineering_only: true
+    minimum_valid_draw_fraction: 0.99
+  RB1:
+    replicates: 200
+    bootstrap_draws: 499
+    arms: ["M0", "M1", "M2", "M0_global_scale"]
+    multiplier: "gaussian"
+    scenario: "N0_complete_balanced_null"
+  RB2:
+    replicates: 500
+    bootstrap_draws: 999
+    candidate_arms: "only M1/M2 Gaussian passing RB1; algorithm locked before RB1"
+    scenario: "N0_complete_balanced_null"
+  multiplier_sensitivity:
+    run_only_for_gaussian_structure_passing_RB1: true
+    datasets: "same paired RB1 datasets"
+    distributions: ["rademacher", "webb_six_point"]
+  transfer_null:
+    run_only_after_RB2_pass: true
+    replicates: 100
+    bootstrap_draws: 499
+    scenarios:
+      - "N1_monotone_dropout_null"
+      - "N2_intermittent_reentry_null"
+      - "N3_unequal_length_null"
+      - "N5_patient_dominance_null"
+      - "N7_risk_composition_shift_null"
+      - "N8_informative_missing_mild_null"
+      - "N8_informative_missing_strong_null"
+
+rb1_continuation:
+  D0_size_005_max: 0.10
+  D2_size_005_max: 0.15
+  D4_size_005_max: 0.15
+  D4_q95_ratio_min: 0.85
+  failure_rate_max: 0.01
+
+rb2_acceptance:
+  D0_size_range: [0.03, 0.08]
+  D2_size_max: 0.10
+  D3_size_max: 0.10
+  D4_size_max: 0.10
+  hard_D4_failure_above: 0.15
+  D4_q95_ratio_range: [0.90, 1.10]
+  failure_rate_max: 0.01
+  no_near_zero_pvalue_pileup: true
+  size_001_max: 0.03
+  D1_size_max: 0.10
+  nominal_005_within_wilson_or_one_mcse: true
+
+covariance_confirmation:
+  required_for_1_0_2: true
+  scopes: ["midpoint_64", "joint_448"]
+  rb2_absolute:
+    pointwise_SD_ratio_range: [0.75, 1.25]
+    leading_eigenvalue_ratio_range: [0.60, 1.40]
+    effective_rank_ratio_range: [0.60, 1.67]
+    correlation_frobenius_error_max: 0.75
+    offdiagonal_correlation_MAE_max: 0.20
+    conditional_mean_RMS_over_truth_mean_SD_max: 0.20
+  rb1_relative_to_M0:
+    metrics: ["pointwise_SD", "leading_eigenvalue", "effective_rank", "correlation_frobenius_error", "offdiagonal_correlation_MAE"]
+    minimum_metrics_closer_or_lower: 3
+    maximum_relative_degradation_any_metric: 0.25
+  rationale: "Broad anti-pathology gate plus paired structural improvement; not tuned to Phase 2R-B outcomes."
+
+selection_rule_if_both_pass:
+  prefer_M1_for_simplicity_if:
+    - "M1 and M2 both satisfy every RB2 and transfer gate"
+    - "M1 D4 q95 ratio lies in [0.90,1.10]"
+    - "M1 all-candidate correlation error is no more than 10% relatively worse than M2"
+    - "M1 has no transfer scenario size more than 0.03 absolutely worse than M2"
+  otherwise: "prefer M2 if M2 alone satisfies all gates; never select by closest size to 0.05"
+  multiplier_sensitivity_never_auto_primary: true
+
+covariance_process:
+  truth_datasets_minimum: 200
+  midpoint_points: 64
+  joint_components: 448
+  compare:
+    - "pointwise SD ratio"
+    - "leading 10 covariance eigenvalue ratios"
+    - "effective rank"
+    - "pairwise correlation Frobenius relative error"
+    - "off-diagonal correlation MAE"
+    - "D2 and D4 maximum quantiles"
+
+nominal_alpha: [0.01, 0.05, 0.10]
+quantiles: [0.90, 0.95, 0.99]
+
+implementation:
+  vectorized_full_refit: true
+  batch_draws: 0
+  convergence_rule: "every draw iterates frozen Bellman FQI until its coefficient delta <=1e-5 or 800 iterations"
+  failed_draw: "explicit; never converted to p=1"
+  support_rescreen_inside_bootstrap: false
+
+final_gates:
+  statuses:
+    - "INFERENCE_REVISION_CONFIRMED"
+    - "INFERENCE_REVISION_PARTIAL"
+    - "PHASE_2RB_REVISION_FAILED"
+  phase3_allowed_after_this_phase: false
+  ohiot1dm_allowed_after_this_phase: false
+
+outputs:
+  root: "results_rs_cusum/phase2rb"
+  replicate_format: "CSV plus compressed NumPy process moments/draws"

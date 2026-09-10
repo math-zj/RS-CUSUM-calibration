@@ -1,0 +1,51 @@
+{
+  "decision_labels": [
+    "TAIL_SOURCE_LOCALIZED",
+    "TAIL_SOURCE_PARTIALLY_LOCALIZED",
+    "TAIL_SOURCE_DIFFUSE",
+    "TAIL_METRIC_UNSTABLE",
+    "FORENSIC_INCONCLUSIVE"
+  ],
+  "existing_process": {
+    "m4_shape": [120, 100, 448],
+    "primary_event": "absolute two-sided exceedance",
+    "thresholds": [0.9, 0.95, 0.975, 0.99],
+    "truth_shape": [120, 448]
+  },
+  "hybrid": {
+    "arms": [
+      "true_all",
+      "fitted_all",
+      "true_initial",
+      "true_policy",
+      "true_random_effect",
+      "true_transition",
+      "true_reward",
+      "true_design",
+      "true_innovation_scales",
+      "true_structural_coefficients"
+    ],
+    "draws_per_outer_per_arm": 79,
+    "outer_replicates": 32
+  },
+  "mc_uncertainty": {
+    "bootstrap_replicates": 500,
+    "pair_sample_size": 25000,
+    "unstable_ci_width": 0.16,
+    "unstable_mcse": 0.04,
+    "unstable_subsample_range": 0.1
+  },
+  "parent_gate": "M4_MECHANISM_JOINT_TAIL_FAIL",
+  "phase": "Phase 2R-E",
+  "prohibitions": {
+    "D3": true,
+    "M4_modification": true,
+    "M5_implementation": true,
+    "OhioT1DM": true,
+    "Phase3": true,
+    "alternative_power_changepoint": true,
+    "gate_revision": true,
+    "transfer_null": true
+  },
+  "version": "1.0.0"
+}

@@ -1,0 +1,31 @@
+protocol:
+  name: "Representative Alternative Comparison and Change-point Localization"
+  label: "representative-altloc"
+  version: "1.0.0"
+  frozen_on: "2026-09-02"
+  purpose: "Paired representative alternatives; not a full power validation."
+  m4_modified: false
+  posthoc_tuning: false
+  full_power_validation: false
+  ohio_t1dm_allowed: false
+design:
+  scenarios:
+    - {id: reward_moderate, change_type: reward, effect_level: moderate, effect_size: 0.60}
+    - {id: reward_strong, change_type: reward, effect_level: strong, effect_size: 1.20}
+    - {id: transition_moderate, change_type: transition, effect_level: moderate, effect_size: 0.60}
+    - {id: transition_strong, change_type: transition, effect_level: strong, effect_size: 1.20}
+  outer_replicates_per_scenario: 100
+  bootstrap_draws_per_method: 199
+  alpha: 0.05
+  true_change_fraction: 0.50
+  transition_shift_multiplier: 0.25
+  original_method: "frozen M0 Gaussian patient-cluster multiplier RS-CUSUM"
+  m4_method: "frozen Phase-2R-D fitted-parametric random-design full-pipeline bootstrap"
+  m4_engine_sha256: "EC7E7DA7D8625736CEAC2B872CD739DEBA29792CD535B8AD533D5266251AF977"
+  gamma: 0.9825931938526898
+  ridge_alpha: 1.0
+seeds:
+  master_seed: 2026090201
+  algorithm: "SHA-256 first 64 bits"
+outputs:
+  root: "results_rs_cusum/representative_altloc"

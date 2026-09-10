@@ -1,0 +1,212 @@
+# Phase 2R-D M4 random-design joint-process bootstrap protocol.
+protocol:
+  name: "RS-CUSUM-RL Phase 2R-D M4 Random-Design Joint-Process Bootstrap"
+  label: "phase2rd-m4-random-design"
+  version: "1.0.0-d0"
+  frozen_on: "2026-08-29"
+  parent_method: "1.0.1-phase1"
+  parent_gate: "DESIGN_VARIATION_HYPOTHESIS_SUPPORTED_BUT_M3_PARTIAL"
+  candidate_status: "diagnostic null-inference prototype; not 1.0.2"
+  phase3_allowed: false
+  ohiot1dm_allowed: false
+  transfer_null_allowed: false
+  alternatives_allowed: false
+  power_allowed: false
+  changepoint_allowed: false
+  posthoc_patch_allowed: false
+
+frozen_observed_method:
+  risk_set: "Phase-1 elapsed-time dynamic risk set"
+  reentry: "120 minute / 24-edge post-gap burn-in"
+  support: "primary"
+  estimator: "patient-balanced normalized Ridge FQI"
+  gamma: 0.9825931938526898
+  ridge_alpha: 1.0
+  fqi_max_iterations: 800
+  fqi_tolerance: 1.0e-5
+  scaling: "harmonic_active_patients"
+  evaluation_grid_file: "results_rs_cusum/phase2r/fixed_evaluation_grid.npz"
+  evaluation_points: 64
+  candidate_fractions: [0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80]
+  base_candidates: [86, 106, 125, 144, 163, 182, 202]
+
+m4:
+  label: "stationary fitted-parametric random-design full-pipeline bootstrap"
+  primary_only: true
+  scenario_scope: "N0_complete_balanced_null only"
+  null_fit_scope: "all observed t=0,...,239 transitions; one stationary model, no left/right or candidate-specific parameters"
+  conditional_on: "fitted stationary generative parameter estimate and fixed N0 phenotype strata"
+  rerandomized_each_draw:
+    - "initial non-phenotype state"
+    - "patient policy random intercept"
+    - "all Bernoulli actions"
+    - "all Markov state innovations"
+    - "all conditional reward innovations"
+  fixed_each_draw:
+    - "12-patient count and balanced observed phenotype vector"
+    - "240-transition horizon and 48-transition pre-analysis history"
+    - "64-point external frozen evaluation grid"
+    - "seven raw candidate fractions"
+    - "observed estimator, Ridge, gamma, support rule and boundary scaling definitions"
+  full_pipeline_each_draw:
+    - "simulate T+1 states, T actions and T rewards"
+    - "rebuild risk-set panel"
+    - "rerun primary support screen"
+    - "refit left/right patient-balanced FQI for every candidate"
+    - "recompute Bellman W, patient Delta and HC1 V"
+    - "recompute full 7 x 64 CUSUM process and D0-D4"
+  process_definition: "direct stationary-null bootstrap statistic; no observed-estimator increment subtraction"
+  support_rule: "rerun primary screen; draw invalid unless all seven frozen N0 coordinates are admissible"
+  critical_value_scaling: false
+  d4_calibration_factor: false
+  gaussian_covariance_surrogate_as_method: false
+  fallback: "none; any fit/simulation/support/FQI failure is explicit"
+
+generative_model:
+  phenotype: "fix the observed balanced state-coordinate-1 vector; X1 remains constant"
+  initial_x0: "OLS Gaussian X0(0) on intercept and phenotype"
+  initial_other: "coordinates 2..p-1 iid Gaussian with pooled mean and pooled residual SD"
+  action: "penalized logistic model logit P(A=1)=b0+b1*X0+b2*X1+u_i"
+  action_patient_penalty: 1.0
+  action_random_effect: "Gaussian u_i with variance=max(empirical penalized-u variance - mean inverse Bernoulli information,0)"
+  action_probability_clip: [1.0e-8, 0.99999999]
+  transition_x0: "pooled OLS Gaussian X0(t+1) on intercept,X0(t),X1(t),A(t)"
+  transition_x1: "deterministically equal phenotype"
+  transition_other: "pooled across coordinates 2..p-1: OLS Gaussian Xj(t+1) on intercept,Xj(t),X0(t)"
+  reward: "pooled OLS Gaussian R(t) on intercept,X0(t),X1(t),X2(t),A(t)"
+  residual_sd: "unbiased residual SD with model degrees of freedom"
+  innovation_independence: "state innovations, action uniforms and reward innovations use disjoint deterministic sub-seeds"
+  minimum_sd: 1.0e-8
+
+seeds:
+  master_seed: 2026090101
+  registry_npz: "results_rs_cusum/phase2rd/seed_registry.npz"
+  registry_json: "results_rs_cusum/phase2rd/seed_registry.json"
+  width_bits: 64
+  disjoint_from_all_prior_registries: true
+  d3_generated_and_hashed_before_d1: true
+  holdout_values_must_not_be_loaded_before_d2_pass: true
+
+stages:
+  D1:
+    purpose: "engineering smoke only"
+    replicates: 10
+    bootstrap_draws: 49
+    arms: ["M4"]
+  D2:
+    purpose: "development mechanism screen"
+    replicates: 120
+    bootstrap_draws: 199
+    arms: ["M0", "M1", "M2", "M3", "M4"]
+    saved_joint_draws_per_dataset: 100
+  D3:
+    purpose: "single locked fresh N0 holdout, only after D2 pass"
+    replicates: 300
+    bootstrap_draws: 499
+    arms: ["M4"]
+    saved_joint_draws_per_dataset: 100
+
+engineering_gate:
+  valid_draw_fraction_min: 0.99
+  testable_replicate_fraction_min: 0.99
+  exact_reproducibility: true
+  finite_process_required: true
+  design_changed_fraction_min: 1.0
+  reward_changed_fraction_min: 1.0
+  all_seven_candidates_fraction_min: 0.99
+  full_refit_count_required: true
+  no_nan_inf: true
+
+d2_gate:
+  type1:
+    size_005_max_each_D0_D4: 0.13
+    D4_size_001_max: 0.04
+    q95_ratio_range_each_D0_D4: [0.80, 1.20]
+    D4_q95_ratio_range: [0.88, 1.12]
+  center_covariance:
+    conditional_mean_RMS_over_truth_SD_max: 0.15
+    pointwise_SD_ratio_range: [0.85, 1.15]
+    leading_eigenvalue_ratio_range: [0.75, 1.25]
+    effective_rank_ratio_range: [0.65, 1.54]
+    correlation_frobenius_relative_error_max: 0.45
+    offdiagonal_correlation_MAE_max: 0.09
+  joint_tail:
+    mean_coordinate_abs_q95_ratio_range: [0.85, 1.15]
+    mean_coordinate_abs_q99_ratio_range: [0.80, 1.20]
+    skewness_RMSE_max: 0.45
+    excess_kurtosis_RMSE_max: 1.40
+    D2_KS_max: 0.20
+    D4_KS_max: 0.20
+    probability_max_exceeds_oracle_q95_range: [0.02, 0.09]
+    joint_exceedance_frobenius_relative_error_max: 1.10
+    joint_exceedance_offdiagonal_MAE_max: 0.008
+    tail_dependence_offdiagonal_MAE_max: 0.12
+    tail_dependence_p95_abs_error_max: 0.12
+  engineering:
+    draw_failure_rate_max: 0.01
+    testable_fraction_min: 0.99
+
+d3_gate:
+  type1:
+    D0_size_005_max: 0.10
+    D1_size_005_max: 0.12
+    D2_size_005_max: 0.12
+    D3_size_005_max: 0.12
+    D4_size_005_max: 0.10
+    D4_size_001_max: 0.03
+    q95_ratio_range_each_D0_D4: [0.85, 1.15]
+    D4_q95_ratio_range: [0.90, 1.10]
+    nominal_005_within_wilson_or_one_mcse: true
+  center_covariance:
+    conditional_mean_RMS_over_truth_SD_max: 0.15
+    pointwise_SD_ratio_range: [0.85, 1.15]
+    leading_eigenvalue_ratio_range: [0.75, 1.25]
+    effective_rank_ratio_range: [0.70, 1.43]
+    correlation_frobenius_relative_error_max: 0.35
+    offdiagonal_correlation_MAE_max: 0.075
+  joint_tail:
+    mean_coordinate_abs_q95_ratio_range: [0.88, 1.12]
+    mean_coordinate_abs_q99_ratio_range: [0.85, 1.15]
+    skewness_RMSE_max: 0.35
+    excess_kurtosis_RMSE_max: 1.20
+    D2_KS_max: 0.15
+    D4_KS_max: 0.15
+    probability_max_exceeds_oracle_q95_range: [0.025, 0.08]
+    joint_exceedance_frobenius_relative_error_max: 1.00
+    joint_exceedance_offdiagonal_MAE_max: 0.006
+    tail_dependence_offdiagonal_MAE_max: 0.10
+    tail_dependence_p95_abs_error_max: 0.10
+  engineering:
+    draw_failure_rate_max: 0.01
+    testable_fraction_min: 0.99
+
+oracle_mc_rationale:
+  source: "existing independent Phase 2R-C C0 truth n=300 versus C2 truth n=300; no M4 run"
+  pointwise_SD_ratio: 0.99233456109874
+  leading_eigenvalue_ratio: 0.9830871907129969
+  D4_q95_ratio: 0.9680143568652606
+  D2_KS: 0.053333333333333344
+  D4_KS: 0.060000000000000026
+  correlation_frobenius_relative_error: 0.29224472803920043
+  joint_exceedance_frobenius_relative_error: 0.8752180635235443
+  joint_exceedance_offdiagonal_MAE: 0.0036168371151592627
+  skewness_RMSE: 0.29044541643305294
+  excess_kurtosis_RMSE: 0.918443651882668
+
+stop_rules:
+  D1_fail: "M4_ENGINEERING_FAIL"
+  D2_type1_fail: "M4_MECHANISM_TYPE1_FAIL"
+  D2_center_fail: "M4_MECHANISM_CENTER_FAIL"
+  D2_covariance_fail: "M4_MECHANISM_COVARIANCE_FAIL"
+  D2_tail_fail: "M4_MECHANISM_JOINT_TAIL_FAIL"
+  D2_multi_fail: "M4_MECHANISM_MULTI_DOMAIN_FAIL"
+  D2_pass: "M4_MECHANISM_PASS_TO_LOCKED_HOLDOUT"
+  D3_fail: "M4_LOCKED_HOLDOUT_FAIL"
+  D3_pass: "M4_NULL_INFERENCE_CONFIRMED_ON_N0"
+  no_new_variant_after_failure: true
+  no_multiplier_or_scale_fallback: true
+
+outputs:
+  root: "results_rs_cusum/phase2rd"
+  report: "report/rs_cusum_phase2rd_report.md"
+

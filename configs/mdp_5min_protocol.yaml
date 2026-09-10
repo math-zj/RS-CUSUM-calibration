@@ -1,0 +1,177 @@
+# Frozen pre-CUSUM protocol for the OhioT1DM analysis MDP.
+#
+# This file is intentionally separate from configs/default.yaml, which belongs
+# to the superseded 30-minute experiment.  None of the definitions below may
+# be changed after looking at CUSUM p-values.  Any future amendment must create
+# a new protocol version and record a reason unrelated to statistical
+# significance.
+protocol:
+  name: "OhioT1DM 5-minute one-step analysis MDP"
+  version: "1.0.0"
+  frozen_on: "2026-08-27"
+  status: "frozen_pre_cusum"
+  purpose: "temporal alignment, forensic validation, descriptive QC, and FQI sanity only"
+  prohibited_during_gate:
+    - "CUSUM"
+    - "bootstrap"
+    - "change-point estimation"
+    - "Round 2"
+    - "Round 3"
+    - "Round 4"
+
+time:
+  # Decision boundaries are actual consecutive CGM timestamps. OhioT1DM CGM
+  # is nominally sampled every 5 minutes. Using observed timestamps guarantees
+  # that the reward/next-state CGM is after every action in the half-open cell.
+  boundary_mode: "observed_consecutive_cgm"
+  interval_min: 5
+  valid_transition_gap_min: [4.5, 5.5]
+  max_allowed_cgm_gap_min: 5.5
+  long_gaps_split_trajectory: true
+  sensitivity_interval_min: 15
+  sensitivity_valid_total_gap_min: [13.5, 16.5]
+  sensitivity_requires_three_valid_5min_steps: true
+
+state:
+  cutoff: "decision-pre-state at tau_t"
+  include_glucose_at_tau_t: true
+  include_non_bolus_events_at_or_before_tau_t: true
+  exclude_bolus_start_at_tau_t_from_history: true
+  history_windows_min:
+    glucose: [5, 15, 30, 120]
+    bolus_delivery: [30, 120, 240]
+    meal: [30, 120, 240]
+    basal: [30]
+  no_future_interpolation: true
+  no_whole_trajectory_standardization: true
+  scaling: "fixed_clinical_constants"
+  feature_names:
+    - "glucose_current"
+    - "glucose_delta_5m"
+    - "glucose_slope_15m"
+    - "glucose_slope_30m"
+    - "glucose_mean_30m"
+    - "glucose_std_30m"
+    - "glucose_mean_120m"
+    - "glucose_std_120m"
+    - "basal_current"
+    - "basal_mean_30m"
+    - "bolus_delivered_30m"
+    - "bolus_delivered_120m"
+    - "iob_linear_4h"
+    - "time_since_bolus_min"
+    - "meal_carbs_30m"
+    - "meal_carbs_120m"
+    - "time_since_meal_min"
+    - "time_of_day_sin"
+    - "time_of_day_cos"
+    - "previous_cgm_gap_min"
+    - "cgm_missing_fraction_30m"
+  fixed_scaling:
+    glucose_current: {center: 120.0, scale: 50.0}
+    glucose_delta_5m: {center: 0.0, scale: 20.0}
+    glucose_slope_15m: {center: 0.0, scale: 2.0}
+    glucose_slope_30m: {center: 0.0, scale: 2.0}
+    glucose_mean_30m: {center: 120.0, scale: 50.0}
+    glucose_std_30m: {center: 0.0, scale: 30.0}
+    glucose_mean_120m: {center: 120.0, scale: 50.0}
+    glucose_std_120m: {center: 0.0, scale: 30.0}
+    basal_current: {center: 0.0, scale: 2.0}
+    basal_mean_30m: {center: 0.0, scale: 2.0}
+    bolus_delivered_30m: {center: 0.0, scale: 10.0}
+    bolus_delivered_120m: {center: 0.0, scale: 20.0}
+    iob_linear_4h: {center: 0.0, scale: 10.0}
+    time_since_bolus_min: {center: 0.0, scale: 240.0}
+    meal_carbs_30m: {center: 0.0, scale: 100.0}
+    meal_carbs_120m: {center: 0.0, scale: 150.0}
+    time_since_meal_min: {center: 0.0, scale: 240.0}
+    time_of_day_sin: {center: 0.0, scale: 1.0}
+    time_of_day_cos: {center: 0.0, scale: 1.0}
+    previous_cgm_gap_min: {center: 5.0, scale: 5.0}
+    cgm_missing_fraction_30m: {center: 0.0, scale: 1.0}
+
+action:
+  definition: "new XML bolus delivery episode with ts_begin in [tau_t, tau_t+1)"
+  encoding: "binary initiation indicator"
+  no_action: "no bolus ts_begin in the half-open interval"
+  interval_left_closed: true
+  interval_right_open: true
+  multiple_starts_in_cell: "A_t=1; retain count, types, timestamps, and total dose in metadata"
+  bolus_types_included: ["normal", "normal dual", "square", "square dual"]
+  # XML does not provide a reliable program identifier with which to merge all
+  # normal-dual/square-dual records. Each ts_begin is therefore kept as an
+  # observed delivery-episode start. This is not automatically a new clinical
+  # decision and is reported as a limitation in the gate review.
+  dual_pairing: "do_not_infer_unobserved_program_id"
+  ongoing_extended_delivery_is_new_action: false
+
+reward:
+  candidate_1:
+    name: "binary_tir"
+    formula: "1[70 <= G_(t+1) <= 180]"
+    tir_low_mg_dl: 70.0
+    tir_high_mg_dl: 180.0
+  candidate_2:
+    name: "clinically_weighted"
+    formula: "1 in range; -2 at 54-69; -4 below 54; -1 at 181-250; -2 above 250"
+    thresholds_mg_dl: {severe_hypo: 54.0, tir_low: 70.0, tir_high: 180.0, severe_hyper: 250.0}
+    utilities: {severe_hypo: -4.0, hypo: -2.0, in_range: 1.0, hyper: -1.0, severe_hyper: -2.0}
+  missing_next_glucose: "invalidate transition; never impute reward zero"
+  selection_rule: "both candidates are reported; never select using significance"
+
+discount:
+  # 0.9 per 30 minutes mapped to the native five-minute clock.
+  gamma_5min: 0.9825931938526898
+  gamma_15min: 0.9486832980505138
+  reference: "gamma_30min=0.9"
+
+insulin:
+  iob_definition: "linear remaining fraction over 240 minutes from actual delivered insulin"
+  iob_horizon_min: 240
+  instantaneous_bolus: "full dose delivered at ts_begin"
+  extended_bolus: "dose delivered uniformly over [ts_begin, ts_end]"
+  extended_start_is_action: true
+  ongoing_extended_delivery: "history/exposure only; never repeat full dose as action"
+  normal_dual: "instantaneous XML episode unless ts_end>ts_begin"
+  square_dual: "uniform extended XML episode over its recorded begin/end"
+
+basal:
+  scheduled_basal: "value active from its timestamp until next scheduled basal event"
+  temp_basal: "overrides scheduled basal on [ts_begin, ts_end)"
+  overlapping_temp_basal: "latest-starting active temp basal wins"
+
+meal:
+  history_windows_min: [30, 120]
+  time_since_meal_cap_min: 240
+  meal_at_tau_t: "included in S_t before an exactly tied bolus; tie is flagged because XML does not establish true order"
+  future_meal_forbidden: true
+
+timestamp_ties:
+  state_update_order:
+    - "CGM at tau_t"
+    - "meal/basal/temp-basal/context records at tau_t"
+    - "freeze S_t"
+    - "bolus ts_begin at tau_t becomes A_t"
+  bolus_at_right_boundary: "belongs to A_(t+1), not A_t"
+  exact_meal_bolus_tie: "meal enters state, but transition is flagged for tie-order sensitivity"
+
+qc:
+  propensity_model: "unweighted L2 logistic regression; diagnostic only"
+  propensity_extreme_low: 0.005
+  propensity_extreme_high: 0.995
+  common_support_quantiles: [0.01, 0.99]
+  fqi_ridge_alphas: [0.01, 0.1, 1.0, 10.0]
+  fqi_max_iter: 300
+  fqi_tolerance: 1.0e-5
+  # Numerical sanity only: retain every rare A=1 transition and draw a
+  # deterministic 20:1 set of A=0 transitions. Q summaries are evaluated on
+  # the complete training/testing data; this sample is not used for inference.
+  fqi_action0_per_action1: 20
+  fqi_sampling_seed: 42
+
+output:
+  root: "results_mdp_gate"
+  arrays: "results_mdp_gate/arrays"
+  audits: "results_mdp_gate/audits"
+  qc: "results_mdp_gate/qc"
+  logs: "results_mdp_gate/logs"

@@ -1,0 +1,9 @@
+# Representative Alternative Comparison and Change-point Localization
+
+This is a limited paired simulation experiment, not a full Phase 2R-I power validation. It compares the project’s frozen Original RS-CUSUM implementation (M0 Gaussian patient-cluster multiplier calibration) with unchanged locked M4 on exactly the same four complete balanced simulated data sets per replication.
+
+The scenarios use the pre-existing Phase-2 alternative amplitudes: moderate = 0.60 and strong = 1.20. The frozen A0 general-change law is separated before any formal result: reward-only changes add the amplitude to `R_t` after the fixed midpoint; transition-only changes add `0.25 * amplitude` to the `X0(t+1)` intercept after the same point. The action policy and all other laws remain unchanged. The known change point is 144 (analysis interval 48--240, fraction 0.50).
+
+Each of four scenarios has 100 fixed outer replications and 199 bootstrap draws for each method. Dataset, Original-bootstrap, and M4-bootstrap seeds are unique, fixed before smoke/formal execution, and disjoint from discovered historical registries. D4 is the sole detection statistic at alpha 0.05. `tau_hat` is the candidate attaining the maximum absolute observed D4 coordinate; it is recorded for both methods. Because M0 and M4 share the same observed process and differ in calibration, their tau estimates are expected to coincide whenever both are available; localization is reported both unconditionally among valid estimates and conditionally on detection.
+
+Formal checkpoints are one atomic JSON file per scenario/replication. A resume only skips a checkpoint after schema, seed, scenario, finite-value, and method-validity checks. No frozen M4 source, M4 configuration, candidate grid, statistic, threshold, seed schedule, or scenario is altered after freeze.

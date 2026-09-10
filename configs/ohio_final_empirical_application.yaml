@@ -1,0 +1,45 @@
+protocol:
+  name: "OhioT1DM final empirical RS-CUSUM application"
+  version: "1.0.0"
+  status: "frozen_pre_run_outcome_blind_empirical"
+  classification: "exploratory empirical application; not confirmatory inference"
+  no_additional_simulation: true
+  no_ohio_outcome_used_for_design: true
+  locked_m4_source_sha256: "EC7E7DA7D8625736CEAC2B872CD739DEBA29792CD535B8AD533D5266251AF977"
+data:
+  split: "training"
+  source_arrays: "results_mdp_gate/arrays/training_*_5min.npz"
+  patient_ids: ["540", "544", "552", "559", "563", "567", "570", "575", "584", "588", "591", "596"]
+  mdp_protocol: "configs/mdp_5min_protocol.yaml"
+  interval_min: 5
+  state_dimension: 21
+  reward: "rewards_binary / 1[70 <= G_(t+1) <= 180]"
+  action: "binary new bolus episode start in [tau_t,tau_t+1)"
+trajectory:
+  clock: "training recording start elapsed time"
+  landmark_hours: 42
+  entry: "first frozen-5min-array boundary in [L,L+5min); entry delay retained"
+  censoring: "follow selected uninterrupted segment to its end; first gap permanently terminates; no re-entry"
+  required_patients: 12
+candidate:
+  elapsed_grid_hours: 6
+  first_candidate_hours: 6
+  last_candidate_before_max_followup_hours: 6
+  selection: "outcome-blind Class A/B support screen only"
+  support_rule: "Bridge-v0 frozen bridge_class_ab: minimum 22 each action/side; >=2 active; >=2 both-side; >=2 unique action-specific; <=.95 dominance"
+fitting:
+  gamma_5min: 0.9825931938526898
+  ridge_alpha: 1.0
+  fqi_max_iterations: 800
+  fqi_tolerance: 1.0e-5
+  evaluation_states: 32
+calibration:
+  alpha: 0.05
+  bootstrap_draws: 199
+  original: "Gaussian patient-cluster multiplier M0; same observed process/tau_hat"
+  bridge: "fitted stationary pooled hierarchical random-design trajectory regeneration with fixed T_i; full FQI refit"
+  invalid_draws: "frozen Bridge-v0 failure accounting; no seed replacement, candidate substitution, fallback, or statistic clipping"
+seeds:
+  master_seed: 2026090401
+outputs:
+  root: "results_rs_cusum/ohio_final_empirical_application"

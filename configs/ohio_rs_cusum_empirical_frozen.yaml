@@ -1,0 +1,49 @@
+protocol:
+  name: "OhioT1DM empirical RS-CUSUM protocol gate"
+  version: "1.0.0-negative-freeze"
+  frozen_on: "2026-09-03"
+  status: "OHIO_PROTOCOL_NOT_FEASIBLE"
+  formal_analysis_authorized: false
+  outcome_blind: true
+  formal_cusum_called: false
+  bootstrap_called: false
+  p_values_computed: false
+  changepoints_computed: false
+inherited_mdp:
+  source: "configs/mdp_5min_protocol.yaml"
+  interval_min: 5
+  transition_gap_min: [4.5, 5.5]
+  state_dimension: 21
+  state: "unchanged frozen 5-minute decision-pre-state"
+  action: "unchanged binary new bolus start in [tau_t,tau_t+1)"
+  reward: "unchanged binary TIR; clinically weighted is sensitivity only"
+trajectory_proposal_if_method_becomes_available:
+  clock: "training_reset_clock only; testing is separately screened"
+  landmark_selection_rule: "earliest outcome-blind 6-hour landmark with all 12 state-eligible patients under the prior availability scan"
+  selected_availability_landmark_h: 42
+  note: "42 h is a proposal derived from pre-CUSUM 4-6 minute feasibility data only; it is not authorized as a formal landmark because the primary MDP requires 4.5-5.5 minute edges."
+  reentry: "none after first illegal edge"
+  burnin: "240-minute record history and 120-minute continuous CGM history"
+  censoring: "first edge outside frozen 4.5-5.5-minute rule permanently terminates patient"
+candidate_proposal_if_method_becomes_available:
+  grid: "6-hour elapsed follow-up grid"
+  selection: "outcome-blind primary support screen only"
+  support_rule: "configs/rs_cusum_sensitivity.yaml::primary"
+  required_count_per_side_action: 66
+  active_patients_each_side_min: 6
+  patients_both_sides_min: 5
+  unique_patients_each_side_action_min: 4
+  action1_dominance_max: 0.60
+  total_transition_dominance_max: 0.45
+inference:
+  original_bootstrap_unit: "one standard-normal multiplier per original patient"
+  locked_m4_engine: "src/rs_cusum_phase2rd/engine.py"
+  required_m4_sha256: "EC7E7DA7D8625736CEAC2B872CD739DEBA29792CD535B8AD533D5266251AF977"
+  m4_direct_ohio_interface_exists: false
+  m4_bootstrap_unit: "NOT_DEFINED_FOR_OHIO; current M4 accepts only complete balanced synthetic N0"
+gate_reasons:
+  - "No frozen, validated real-data M4 fitted-null/bootstrap interface exists."
+  - "Existing common-landmark evidence used 4-6 minute timing tolerance and cannot certify the frozen primary 4.5-5.5-minute trajectory rule."
+  - "Testing fails even the permissive 4-6-minute availability/support screen: one active patient in the central follow-up region and 100 percent action-1 dominance."
+outputs:
+  root: "results_rs_cusum/ohio_empirical_protocol_freeze"

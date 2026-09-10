@@ -1,0 +1,79 @@
+# Frozen outcome-blind support and re-entry sensitivities for Phase 1.
+protocol:
+  name: "RS-CUSUM-RL support sensitivities"
+  version: "1.0.0-phase1"
+  frozen_on: "2026-08-28"
+  status: "phase1_method_frozen"
+  reference_patient_count: 12
+  state_dimension: 21
+  intercept_dimension: 1
+  per_action_parameter_dimension: 22
+
+eligibility_semantics:
+  count_comparison: "inclusive: observed count >= required floor"
+  patient_comparison: "inclusive: observed unique patient count >= minimum"
+  dominance_comparison: "inclusive: observed maximum share <= maximum"
+  empty_candidate_status: "NOT_TESTABLE_UNDER_SUPPORT_RULE"
+  empty_candidate_behavior:
+    - "do not compute a statistic"
+    - "do not compute a bootstrap null"
+    - "do not report p=1"
+    - "do not use a fallback candidate"
+  support_inputs_allowed:
+    - "patient_id"
+    - "elapsed_index"
+    - "action"
+    - "state_dimension from frozen configuration"
+  support_inputs_forbidden:
+    - "reward"
+    - "Q value"
+    - "Bellman residual"
+    - "test statistic"
+    - "p-value"
+    - "future outcome"
+    - "propensity score or inverse-probability weight"
+
+thresholds:
+  lenient:
+    transition_count_each_side_action:
+      absolute_floor: 30
+      multiplier_per_action_parameter_dimension: 2.0
+      resulting_floor_at_dimension_22: 44
+    minimum_active_patients_each_side: 4
+    minimum_patients_observed_on_both_sides: 3
+    minimum_unique_patients_each_side_action: 3
+    maximum_single_patient_action1_share_each_side: 0.75
+    maximum_single_patient_total_transition_share_each_side: 0.60
+  primary:
+    transition_count_each_side_action:
+      absolute_floor: 40
+      multiplier_per_action_parameter_dimension: 3.0
+      resulting_floor_at_dimension_22: 66
+    minimum_active_patients_each_side: 6
+    minimum_patients_observed_on_both_sides: 5
+    minimum_unique_patients_each_side_action: 4
+    maximum_single_patient_action1_share_each_side: 0.60
+    maximum_single_patient_total_transition_share_each_side: 0.45
+  strict:
+    transition_count_each_side_action:
+      absolute_floor: 60
+      multiplier_per_action_parameter_dimension: 5.0
+      resulting_floor_at_dimension_22: 110
+    minimum_active_patients_each_side: 8
+    minimum_patients_observed_on_both_sides: 7
+    minimum_unique_patients_each_side_action: 6
+    maximum_single_patient_action1_share_each_side: 0.50
+    maximum_single_patient_total_transition_share_each_side: 0.35
+
+reported_but_not_used_for_eligibility:
+  - "per-side transition count"
+  - "per-side action counts"
+  - "per-side unique action-patient counts"
+  - "per-patient total and action-specific shares"
+  - "maximum patient dominance"
+  - "count effective sample size = 1 / sum(patient count share squared)"
+
+reentry_sensitivity:
+  main: "allow_after_continuous_120min_cgm_burnin"
+  alternative: "allow_sparse_real_history_after_gap"
+  rule: "both retain original patient_id as the sole cluster label and never compress elapsed time"

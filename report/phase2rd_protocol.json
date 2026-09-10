@@ -1,0 +1,36 @@
+{
+  "algorithm": "stationary fitted-parametric random-design full-pipeline bootstrap",
+  "bootstrap_process": "direct stationary-null 7x64 studentized CUSUM path",
+  "candidate": "M4",
+  "config": "configs/rs_cusum_phase2rd.yaml",
+  "fallback": "none",
+  "frozen_before_M4_outputs": true,
+  "gates": {
+    "D1": "engineering_gate",
+    "D2": ["type1", "center_covariance", "joint_tail", "engineering"],
+    "D3": ["type1", "center_covariance", "joint_tail", "engineering"]
+  },
+  "parent_gate": "DESIGN_VARIATION_HYPOTHESIS_SUPPORTED_BUT_M3_PARTIAL",
+  "parent_method": "1.0.1-phase1",
+  "primary_only": true,
+  "prohibited": [
+    "M3 tuning",
+    "multiplier selection",
+    "global critical-value scaling",
+    "D4 calibration factor",
+    "post-hoc gate changes",
+    "replacement holdout",
+    "transfer-null",
+    "alternative/power/changepoint",
+    "Phase 3",
+    "OhioT1DM",
+    "establishing 1.0.2"
+  ],
+  "stages": {
+    "D1": {"replicates": 10, "bootstrap_draws": 49},
+    "D2": {"replicates": 120, "bootstrap_draws": 199},
+    "D3": {"replicates": 300, "bootstrap_draws": 499, "locked": true}
+  },
+  "version": "1.0.0-d0"
+}
+

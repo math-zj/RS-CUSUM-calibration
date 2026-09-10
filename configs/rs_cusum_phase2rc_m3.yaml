@@ -1,0 +1,48 @@
+# Frozen only after C0 gate supported design variation and before M3 multi-repetition runs.
+protocol:
+  label: "phase2rc-m3-implementation"
+  parent_c0_gate: "DESIGN_VARIATION_HYPOTHESIS_SUPPORTED"
+  status: "diagnostic candidate; not method 1.0.2"
+  objective_weight_primary: "normalized exponential patient weights"
+  objective_weight_sensitivity: "patient multinomial cluster counts"
+  gamma4_enabled: false
+  estimator_increment_centering: true
+  draw_specific_variance: true
+  pseudo_reward_forbidden: true
+  support_rescreen_forbidden: true
+
+engineering:
+  all_one_beta_tolerance: 2.0e-10
+  all_one_increment_tolerance: 2.0e-10
+  convergence_failure_is_explicit: true
+  invalid_negative_weight_is_error: true
+  zero_weight_allowed_only_for_multinomial: true
+
+c2_forensics:
+  saved_M1_process_draws_per_dataset: 100
+  covariance_matched_gaussian_draws: 100000
+  covariance_matched_gaussian_seed_label: "C2-M1-oracle-gaussian"
+  marginal_tail_probabilities: [0.95, 0.99]
+  pairwise_joint_exceedance_threshold: 0.95
+  distribution_distance: "two-sample KS for D2/D4 mixture versus truth"
+  kurtosis_definition: "Pearson kurtosis minus 3"
+
+selection:
+  EXP_is_only_primary_structure: true
+  MULT_is_sensitivity_only: true
+  never_select_by_closest_size_to_005: true
+  partial_evidence_if_C2_fails:
+    D4_size_005_max: 0.15
+    D4_q95_ratio_range: [0.80, 1.20]
+    conditional_mean_RMS_over_truth_SD_max: 0.30
+    pointwise_SD_ratio_range: [0.75, 1.25]
+    leading_eigenvalue_ratio_range: [0.60, 1.40]
+  c3_broad_joint_spread_required:
+    pointwise_SD_ratio_range: [0.85, 1.15]
+    leading_eigenvalue_ratio_range: [0.75, 1.25]
+
+post_c3:
+  transfer_null_in_this_phase: false
+  establish_1_0_2: false
+  phase3: false
+  ohiot1dm: false

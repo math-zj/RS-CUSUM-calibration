@@ -1,0 +1,175 @@
+protocol:
+  name: "RS-CUSUM-RL Phase 2R-H Transfer-Null and Null-Misspecification Validation"
+  label: "phase2rh-transfer-null"
+  version: "1.0.0-h0"
+  frozen_on: "2026-09-01"
+  parent_method: "1.0.1-phase1"
+  phase2rd_gate_immutable: "M4_MECHANISM_JOINT_TAIL_FAIL"
+  phase2re_gate_immutable: "TAIL_METRIC_UNSTABLE"
+  phase2rf_gate_immutable: "M4_JOINT_TAIL_CONFIRMED"
+  phase2rg_gate_immutable: "M4_FRESH_GLOBAL_NULL_PASS"
+  validation_only: true
+  m4_modification: false
+  posthoc_tuning: false
+  scenario_specific_patch: false
+  alternatives_allowed: false
+  power_allowed: false
+  changepoint_allowed: false
+  ohiot1dm_allowed: false
+  phase3_allowed: false
+  establish_1_0_2: false
+
+frozen_method:
+  candidate: "unchanged Phase 2R-D M4 confirmed in Phase 2R-F/G"
+  m4_engine_sha256: "EC7E7DA7D8625736CEAC2B872CD739DEBA29792CD535B8AD533D5266251AF977"
+  phase2rf_metric_sha256: "1C45FB63F5D3429C3A8BDA24355CD55BF81F823BEF0B20D0A2AE4AD988567F98"
+  evaluation_grid_file: "results_rs_cusum/phase2r/fixed_evaluation_grid.npz"
+  candidate_count: 7
+  base_candidates: [86, 106, 125, 144, 163, 182, 202]
+  evaluation_count: 64
+  process_dimension: 448
+  process_order: "candidate-major then evaluation-coordinate"
+  compatibility_label: "N0_complete_balanced_null"
+  compatibility_label_note: "SyntheticDataset.scenario retains the frozen M4 input label; the actual Phase-H DGP is separately and obligatorily stored in every registry, task and checkpoint."
+
+scenario_plan:
+  registry_csv: "results_rs_cusum/phase2rh/scenario_registry.csv"
+  registry_json: "results_rs_cusum/phase2rh/scenario_registry.json"
+  order: [H0_reference_N0, H1_patient_heterogeneity_t5, H2_imbalanced_design, H3_reward_t5, H4_transition_t5, H5_reward_heteroskedastic, H6_reward_AR1, H7_weaker_overlap, H8_combined_moderate]
+  reference: [H0_reference_N0]
+  primary_transfer: [H1_patient_heterogeneity_t5, H2_imbalanced_design, H3_reward_t5, H4_transition_t5, H5_reward_heteroskedastic, H6_reward_AR1]
+  stress: [H7_weaker_overlap, H8_combined_moderate]
+  all_complete_observation: true
+  all_stationary_no_changepoint: true
+  all_seven_candidates_required: true
+  support_boundary: "frozen Phase-1 primary support screen; every outer/oracle process requires all seven base candidates"
+
+dgp:
+  patients: 12
+  horizon: 240
+  analysis_start: 48
+  state_dimension: 21
+  initial_state_sd: 0.70
+  phenotype_shift_x0: 0.50
+  phenotype_policy_coefficient: 0.20
+  state_ar: 0.72
+  state_phenotype_coefficient: 0.12
+  state_action_coefficient: 0.18
+  other_state_ar: 0.55
+  other_state_x0_coefficient: 0.04
+  state_innovation_sd: 0.45
+  reward_x0_coefficient: 0.40
+  reward_phenotype_coefficient: 0.10
+  reward_x2_coefficient: 0.05
+  reward_action_coefficient: -0.20
+  reward_innovation_sd: 0.60
+  reference_action_target: 0.50
+  reference_action_state_coefficient: 0.35
+  reference_policy_random_effect_sd: 0.15
+
+sample_plan:
+  evidence_file: "results_rs_cusum/phase2rh/sample_size_precision_plan.csv"
+  scenarios: 9
+  oracle_banks: [primary, reference]
+  oracle_processes_per_bank_per_scenario: 1000
+  oracle_chunk_size: 20
+  m4_outer_replicates_per_scenario: 200
+  m4_inner_draws_per_outer: 199
+  m4_balanced_processes_per_scenario: 1000
+  m4_balanced_selection: "exactly the first 5 valid-position draws from each of 200 pre-registered outer clusters; a failed selected draw remains failed and is not replaced"
+  expected_q99_exceedances_per_coordinate_per_oracle_bank: 10
+  type1_mcse_at_rate_005: 0.015411
+  type1_mcse_at_rate_010: 0.021213
+  rationale: "200 outer replicates give MCSE 0.0154 at size .05 and 0.0212 at size .10; an observed .05 has an approximate 95% Wilson interval [0.0274,0.0896], sufficient to distinguish gross inflation beyond the frozen .10 D4 tolerance without post-hoc enlargement."
+
+primary_inference_gate:
+  alpha: 0.05
+  D4_size_005_max: 0.10
+  size_005_max_each_D0_D4: 0.13
+  D4_size_001_max: 0.04
+  D4_nominal_005_within_Wilson_or_one_MCSE: true
+  D2_KS_max: 0.20
+  D4_KS_max: 0.20
+  q95_ratio_D0_D3: [0.80, 1.20]
+  q95_ratio_D4: [0.88, 1.12]
+  probability_M4_D4_exceeds_oracle_q95: [0.02, 0.09]
+  testable_fraction_min: 0.99
+
+mechanism_diagnostics:
+  role: "diagnostic only; failures produce MILD_DEGRADATION unless primary inference also fails"
+  thresholds: [0.90, 0.95, 0.975, 0.99]
+  EISJEM_point_max: 0.015
+  center_mean_RMS_over_truth_SD_max: 0.15
+  covariance_pointwise_SD_ratio: [0.85, 1.15]
+  covariance_leading_eigenvalue_ratio: [0.75, 1.25]
+  covariance_effective_rank_ratio: [0.65, 1.54]
+  covariance_correlation_frobenius_relative_error_max: 0.45
+  covariance_offdiagonal_correlation_MAE_max: 0.09
+  marginal_q90_ratio: [0.85, 1.15]
+  marginal_q95_ratio: [0.85, 1.15]
+  marginal_q975_ratio: [0.80, 1.20]
+  marginal_q99_ratio: [0.80, 1.20]
+  marginal_exceedance_MAE_max: 0.02
+  skewness_RMSE_max: 0.45
+  excess_kurtosis_RMSE_max: 1.40
+  q95_joint_exceedance_frobenius_relative_error_max: 1.10
+  q95_joint_exceedance_offdiagonal_MAE_max: 0.008
+  q95_tail_dependence_offdiagonal_MAE_max: 0.12
+
+engineering_gate:
+  oracle_failure_rate_max: 0.01
+  m4_draw_failure_rate_max: 0.01
+  m4_outer_failure_rate_max: 0.01
+  testable_fraction_min: 0.99
+  finite_required: true
+  all_seven_candidates_required: true
+  exact_m4_source_hash_required: true
+  exact_metric_source_hash_required: true
+  exact_seed_registry_required: true
+  no_duplicate_extra_unregistered_seed: true
+
+classification:
+  ROBUST_PASS: "engineering valid; all primary inference checks pass; all mechanism diagnostics pass"
+  MILD_DEGRADATION: "engineering valid; all primary inference checks pass; at least one mechanism diagnostic fails"
+  NULL_VALIDITY_FAIL: "engineering valid but at least one primary type-I or max-calibration check fails"
+  ENGINEERING_INVALID: "protocol/hash/seed/checkpoint corruption or more than the allowed estimation/support/draw failure; never used for scientific failure"
+
+multiplicity:
+  primary_family: "six pre-registered moderate transfer scenarios H1-H6"
+  overall_logic: "intersection-union: every primary scenario must pass, so no multiplicity correction is needed to protect a false overall PASS"
+  scenario_wilson: "unadjusted 95% Wilson intervals are descriptive and part of the per-scenario practical gate"
+  simultaneous_sensitivity: "also report Bonferroni-Wilson intervals at 1-0.05/6 for H1-H6; not a separate gate"
+  stress_scenarios: "H7-H8 are pre-registered stress tests and affect PASS versus PARTIAL as specified below"
+
+final_gate:
+  pass: "M4_TRANSFER_NULL_PASS"
+  partial: "M4_TRANSFER_NULL_PARTIAL"
+  fail: "M4_TRANSFER_NULL_FAIL"
+  invalid: "M4_TRANSFER_NULL_INVALID"
+  invalid_logic: "any required scenario ENGINEERING_INVALID, source/protocol/seed violation, corrupt output, or missing registered replicate"
+  fail_logic: "H0 reference or any primary transfer H1-H6 is NULL_VALIDITY_FAIL"
+  partial_logic: "all H1-H6 primary inference gates pass, but H7/H8 has NULL_VALIDITY_FAIL, or more than two H1-H8 scenarios are MILD_DEGRADATION, or the same mechanism domain fails in at least three H1-H8 scenarios"
+  pass_logic: "H0 and H1-H8 all pass primary inference; no more than two H1-H8 scenarios are MILD_DEGRADATION; no mechanism domain fails in three or more H1-H8 scenarios"
+  alternative_power_eligibility: "PASS only"
+  no_posthoc_rerun: true
+
+seeds:
+  master_seed: 2026090108
+  registry_npz: "results_rs_cusum/phase2rh/seed_registry.npz"
+  registry_json: "results_rs_cusum/phase2rh/seed_registry.json"
+  width_bits: 64
+  disjoint_from_phases_B_through_G: true
+  register_all_dgp_and_m4_derived_subseeds: true
+
+execution:
+  deterministic_resume: true
+  atomic_checkpoint_writes: true
+  completed_seed_not_repeated: true
+  invalid_checkpoint_hard_fails: true
+  no_fallback: true
+  no_replication_increase_after_start: true
+  no_scenario_change_after_start: true
+
+outputs:
+  root: "results_rs_cusum/phase2rh"
+  report: "report/rs_cusum_phase2rh_report.md"

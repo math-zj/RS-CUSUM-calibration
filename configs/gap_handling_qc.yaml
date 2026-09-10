@@ -1,0 +1,53 @@
+# Pre-CUSUM gap audit protocol.  This file does not change the frozen MDP
+# protocol in mdp_5min_protocol.yaml and is never read by a CUSUM entry point.
+audit:
+  name: "OhioT1DM gap-handling forensic QC"
+  version: "1.0.0"
+  status: "pre_cusum_qc_only"
+  prohibited:
+    - "CUSUM statistic"
+    - "multiplier bootstrap"
+    - "p-value"
+    - "change-point estimation"
+    - "Round 2-4"
+
+gap_bins_min:
+  # Intervals are left-open/right-closed except the first interval. Exact
+  # endpoint semantics are recorded in the generated output.
+  - {label: "<4.5", lower: null, upper: 4.5, upper_inclusive: false}
+  - {label: "4.5-5.5", lower: 4.5, upper: 5.5, lower_inclusive: true, upper_inclusive: true}
+  - {label: "5.5-6", lower: 5.5, upper: 6.0, lower_inclusive: false, upper_inclusive: true}
+  - {label: "6-7.5", lower: 6.0, upper: 7.5, lower_inclusive: false, upper_inclusive: true}
+  - {label: "7.5-12.5", lower: 7.5, upper: 12.5, lower_inclusive: false, upper_inclusive: true}
+  - {label: "12.5-17.5", lower: 12.5, upper: 17.5, lower_inclusive: false, upper_inclusive: true}
+  - {label: "17.5-30", lower: 17.5, upper: 30.0, lower_inclusive: false, upper_inclusive: true}
+  - {label: "30-60", lower: 30.0, upper: 60.0, lower_inclusive: false, upper_inclusive: true}
+  - {label: "1-2h", lower: 60.0, upper: 120.0, lower_inclusive: false, upper_inclusive: true}
+  - {label: "2-6h", lower: 120.0, upper: 360.0, lower_inclusive: false, upper_inclusive: true}
+  - {label: "6-24h", lower: 360.0, upper: 1440.0, lower_inclusive: false, upper_inclusive: true}
+  - {label: ">24h", lower: 1440.0, upper: null, lower_inclusive: false}
+
+adjacency_rules_min:
+  - {name: "4.5-5.5", lower: 4.5, upper: 5.5}
+  - {name: "4-6", lower: 4.0, upper: 6.0}
+  - {name: "3.5-6.5", lower: 3.5, upper: 6.5}
+  - {name: "3-7", lower: 3.0, upper: 7.0}
+
+classification:
+  # A 7.5-minute midpoint separates a delayed/jittered nominal observation
+  # from a gap most consistent with at least one missing five-minute sample.
+  genuine_missing_gap_threshold_min: 7.5
+
+fixed_lattice_candidate:
+  interval_min: 5.0
+  anchor: "each patient's first unique CGM timestamp"
+  state_mapping: "latest real CGM at or before tau_k"
+  past_tolerance_min: 1.0
+  observation_reuse: false
+  future_observation_for_state: false
+  symmetric_nearest_mapping: false
+  genuine_gap_threshold_min: 7.5
+  action_cell: "[tau_k, tau_(k+1))"
+  reward_mapping: "the causal CGM mapped to tau_(k+1)"
+  reward_must_follow_all_cell_bolus_starts: true
+

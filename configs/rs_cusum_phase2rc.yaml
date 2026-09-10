@@ -1,0 +1,126 @@
+# Phase 2R-C mechanism localization and conditional whole-cluster candidate protocol.
+protocol:
+  name: "RS-CUSUM-RL Phase 2R-C Design-Variation Localization"
+  label: "phase2rc-design-variation"
+  frozen_on: "2026-08-29"
+  parent_method: "1.0.1-phase1"
+  parent_gate: "INFERENCE_REVISION_PARTIAL"
+  candidate_version_status: "no 1.0.2 established"
+  phase3_gate: "CLOSED"
+  formal_ohiot1dm_gate: "CLOSED"
+  alternatives_allowed: false
+  power_allowed: false
+  changepoint_performance_allowed: false
+  transfer_null_allowed: false
+
+frozen_observed_method:
+  risk_set: "Phase-1 elapsed-time dynamic risk set"
+  reentry: "120 minute / 24-edge post-gap burn-in"
+  support: "primary"
+  estimator: "patient-balanced normalized Ridge FQI"
+  gamma: 0.9825931938526898
+  ridge_alpha: 1.0
+  fqi_max_iterations: 800
+  fqi_tolerance: 1.0e-5
+  influence: "Bellman fixed-point Jacobian and frozen Delta_i"
+  scaling: "harmonic_active_patients"
+  evaluation_grid_file: "results_rs_cusum/phase2r/fixed_evaluation_grid.npz"
+  evaluation_points: 64
+  candidate_fractions: [0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80]
+  base_candidates: [86, 106, 125, 144, 163, 182, 202]
+
+fresh_seeds:
+  master_seed: 2026083101
+  seed_file: "results_rs_cusum/phase2rc/frozen_seed_lists.npz"
+  seed_width_bits: 64
+  disjoint_from: ["Phase 2R-A", "Phase 2R-B"]
+  c3_generated_and_hashed_before_c2: true
+
+c0:
+  scenario: "N0_complete_balanced_null"
+  replicates: 300
+  bootstrap_draws: 999
+  arms: ["M0", "M1", "M2"]
+  multiplier: "gaussian"
+  save_coordinate_conditional_means: true
+  centered_process_is_forensic_only: true
+  nested_design_reward:
+    identifiable: true
+    justification: "states/actions do not depend on rewards; reward innovation is independent Gaussian under frozen N0 generator"
+    outer_designs: 100
+    inner_reward_replicates: 100
+    fixed_design_fields: ["states", "actions", "patient_ids", "phenotypes", "observed_mask"]
+    regenerated_field: "reward innovation only"
+  evidence_gate:
+    A:
+      conditional_mean_RMS_over_truth_SD_min: 0.25
+      zero_center_abs_correlation_min: 0.75
+      zero_center_slope_range: [0.60, 1.40]
+      zero_center_relative_RMSE_max: 0.70
+    B:
+      within_pointwise_variance_fraction_max: 0.80
+      within_leading_eigenvalue_fraction_max: 0.75
+      decomposition_frobenius_relative_error_max: 0.05
+    C:
+      M2_over_M1_mean_patient_process_norm_max: 0.80
+      minimum_design_associations_attenuated_by_0_15: 2
+    pass_if_any_evidence: true
+
+m3:
+  implement_only_if_c0_passes: true
+  label: "centered exchangeably weighted patient full-refit"
+  primary_weight_law: "normalized_exponential"
+  sensitivity_weight_laws: ["multinomial_cluster_counts"]
+  gamma4_optional_frozen_choice: false
+  no_pseudo_reward: true
+  support_rescreen_inside_bootstrap: false
+  centered_increment: "(Q_L_star-Q_R_star)-(Q_L_observed-Q_R_observed)"
+  observed_statistic_unchanged: true
+  draw_specific_studentization: true
+
+stages:
+  C1:
+    scenario: "N0_complete_balanced_null"
+    replicates: 20
+    bootstrap_draws: 199
+    arms: ["M0", "M1", "M2", "M3_EXP"]
+    minimum_valid_draw_fraction: 0.99
+  C2:
+    scenario: "N0_complete_balanced_null"
+    replicates: 300
+    bootstrap_draws: 499
+    arms: ["M0", "M1", "M2", "M3_EXP"]
+  C3:
+    scenario: "N0_complete_balanced_null"
+    replicates: 500
+    bootstrap_draws: 999
+    arm: "M3_EXP only if C2 passes"
+
+m3_c2_continuation:
+  D0_size_005_max: 0.10
+  D2_size_005_max: 0.12
+  D4_size_005_max: 0.12
+  D4_q95_ratio_range: [0.88, 1.12]
+  conditional_mean_RMS_over_truth_SD_max: 0.20
+  pointwise_SD_ratio_range: [0.85, 1.15]
+  leading_eigenvalue_ratio_range: [0.75, 1.25]
+  failure_rate_max: 0.01
+
+m3_c3_acceptance:
+  D4_size_005_max: 0.10
+  D4_q95_ratio_range: [0.90, 1.10]
+  conditional_mean_RMS_over_truth_SD_max: 0.20
+  pointwise_SD_ratio_preferred: [0.90, 1.10]
+  leading_eigenvalue_ratio_preferred: [0.80, 1.20]
+  size_001_max: 0.03
+  failure_rate_max: 0.01
+  nominal_005_within_wilson_or_one_mcse: true
+
+final_gates:
+  - "WHOLE_CLUSTER_INFERENCE_CANDIDATE_CONFIRMED_ON_N0"
+  - "DESIGN_VARIATION_HYPOTHESIS_SUPPORTED_BUT_M3_PARTIAL"
+  - "DESIGN_VARIATION_HYPOTHESIS_NOT_SUPPORTED"
+  - "PHASE_2RC_FAILED"
+
+outputs:
+  root: "results_rs_cusum/phase2rc"

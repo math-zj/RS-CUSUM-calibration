@@ -1,0 +1,36 @@
+# Phase 1 implements the generator and deterministic smoke tests only.
+# Pilot/full Monte Carlo runs remain locked until an explicit Phase 2 gate.
+protocol:
+  version: "1.0.0-phase1"
+  status: "phase1_generator_only"
+  pilot_authorization_required: "phase2_pilot_authorized"
+  full_authorization_required: "phase2_full_authorized"
+  master_seed: 20260828
+
+generator:
+  interval_min: 5
+  default_patients: 12
+  default_transitions: 240
+  default_state_dimension: 4
+  state_ar_coefficient: 0.75
+  state_noise_sd: 0.35
+  reward_noise_sd: 0.5
+  action_state_coefficient: 0.6
+  gamma: 0.9825931938526898
+
+scenario_families:
+  - "complete_balanced_null"
+  - "complete_balanced_one_change"
+  - "monotone_dropout"
+  - "intermittent_missing_with_reentry"
+  - "unequal_length"
+  - "single_patient_dominance"
+  - "rare_action1"
+  - "dropout_plus_rare_action1"
+  - "intermittent_plus_dominance"
+
+phase1_execution_limits:
+  maximum_smoke_replicates: 3
+  formal_replicates: 0
+  p_values: false
+  change_point_estimation_on_ohiot1dm: false

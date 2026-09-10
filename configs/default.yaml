@@ -1,0 +1,68 @@
+# CUSUM-RL Pre-Experiment Config for OhioT1DM
+# =============================================
+
+# Data paths
+data:
+  raw_dir: "OhioT1DM"
+  train_dir: "OhioT1DM/train"
+  test_dir: "OhioT1DM/test"
+  cusumrl_dir: "CUSUM-RL-main"
+
+# Preprocessing
+preprocess:
+  resample_interval_min: 30       # Resample 5-min data to 30-min windows
+  glucose_col: "glucose"
+  bolus_col: "bolus"
+  meal_col: "meal"
+  basal_col: "basal"
+  interpolation_method: "linear"   # Interpolation for glucose missing values
+
+# RL dataset construction
+rl_dataset:
+  future_horizon_min: 60           # Primary: 60min future TIR
+  future_horizon_alt_min: 30       # Alternative: 30min future TIR
+  tir_low: 70                      # TIR low threshold (mg/dL)
+  tir_high: 180                    # TIR high threshold (mg/dL)
+  # State features
+  state_features:
+    - "glucose_current"
+    - "glucose_prev"
+    - "glucose_slope"
+    - "glucose_rolling_mean_2h"
+    - "glucose_rolling_std_2h"
+    - "basal_current"
+    - "bolus_total_2h"
+    - "meal_carbs_3h"
+    - "time_of_day_sin"
+    - "time_of_day_cos"
+
+# CUSUM-RL parameters
+cusum_rl:
+  seed: 42
+  qmodel: "polynomial"             # 'rbf' or 'polynomial' (polynomial is more stable)
+  degree: 1                        # polynomial degree (1=linear, 2=quadratic)
+  gamma: 0.9                       # discount factor (lower = more stable)
+  rbf_bw: null                     # null = auto-calculate via median heuristic
+  theta: 0.5                       # weight for CUSUM statistic
+  epsilon: 0.05                    # boundary removal parameter (smaller = test near edges)
+  J: 3000                          # number of grid points for max-type statistic
+  nB: 500                          # number of bootstrap samples
+  num_changept: 15                 # number of candidate change points
+  num_threads: 1                   # number of threads (use 1 for stability)
+  select_basis: false              # whether to do CV basis selection
+  num_basis_list: [1, 2, 3]        # basis candidates for CV
+  select_basis_interval: 5
+  criterion: "ls"                  # cross-validation criterion
+  max_iter: 300                    # max FQI iterations
+  tol: 1.0e-4                      # FQI convergence tolerance
+  kappa_list_ratio: [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]  # as fraction of T
+
+# Output
+output:
+  results_dir: "results"
+  tables_dir: "results/tables"
+  figures_dir: "results/figures"
+  arrays_dir: "results/arrays"
+  logs_dir: "results/logs"
+  figure_format: "svg"             # 'svg', 'pdf', or 'png'
+  dpi: 150

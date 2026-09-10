@@ -1,0 +1,42 @@
+{
+  "phase": "Phase 2R-G",
+  "version": "1.0.0-g0",
+  "purpose": "one-time fresh locked confirmation of unchanged M4 under synthetic N0",
+  "scope_label": "Fresh Locked N0 Confirmation",
+  "immutable_parent_gates": {
+    "Phase 2R-D": "M4_MECHANISM_JOINT_TAIL_FAIL",
+    "Phase 2R-E": "TAIL_METRIC_UNSTABLE",
+    "Phase 2R-F": "M4_JOINT_TAIL_CONFIRMED"
+  },
+  "sample_plan": {
+    "oracle_banks": 2,
+    "oracle_processes_per_bank": 2500,
+    "oracle_processes_total": 5000,
+    "m4_outer_replicates": 300,
+    "m4_inner_draws": 199,
+    "m4_generated_processes": 59700,
+    "m4_primary_balanced_processes": 2500,
+    "uncertainty_replicates": 500
+  },
+  "primary": {
+    "metric": "EISJEM",
+    "thresholds": [0.9, 0.95, 0.975, 0.99],
+    "equivalence_margin": 0.015,
+    "mc_se_max": 0.0075,
+    "ci_width_max": 0.03,
+    "pass_rule": "upper 95% cluster-bootstrap bound <= 0.015"
+  },
+  "gate_labels": [
+    "M4_FRESH_GLOBAL_NULL_PASS",
+    "M4_FRESH_GLOBAL_NULL_FAIL",
+    "M4_FRESH_GLOBAL_NULL_INVALID"
+  ],
+  "one_time_holdout": true,
+  "no_posthoc_tuning": true,
+  "prohibited": [
+    "M4 modification", "M4.1", "M4.2", "M5", "mechanism exploration",
+    "post-hoc calibration", "replacement holdout", "OhioT1DM", "Phase 3",
+    "transfer-null", "alternatives", "power", "changepoint", "RS-CUSUM-RL 1.0.2"
+  ]
+}
+

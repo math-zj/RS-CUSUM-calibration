@@ -1,0 +1,28 @@
+{
+  "phase": "Phase 2R-H",
+  "version": "1.0.0-h0",
+  "purpose": "transfer-null and stationary null-misspecification validation of unchanged M4",
+  "historical_gates_immutable": {
+    "Phase 2R-D": "M4_MECHANISM_JOINT_TAIL_FAIL",
+    "Phase 2R-E": "TAIL_METRIC_UNSTABLE",
+    "Phase 2R-F": "M4_JOINT_TAIL_CONFIRMED",
+    "Phase 2R-G": "M4_FRESH_GLOBAL_NULL_PASS"
+  },
+  "scenario_roles": {
+    "reference": ["H0_reference_N0"],
+    "primary_transfer": ["H1_patient_heterogeneity_t5", "H2_imbalanced_design", "H3_reward_t5", "H4_transition_t5", "H5_reward_heteroskedastic", "H6_reward_AR1"],
+    "stress": ["H7_weaker_overlap", "H8_combined_moderate"]
+  },
+  "sample_plan_per_scenario": {
+    "oracle_primary": 1000,
+    "oracle_reference": 1000,
+    "m4_outer": 200,
+    "m4_inner": 199,
+    "m4_balanced": 1000
+  },
+  "primary_gate": "type-I plus D0-D4/D2-D4 maximum-distribution calibration plus engineering validity",
+  "mechanism_role": "diagnostic; a diagnostic-only failure maps to MILD_DEGRADATION",
+  "multiplicity": "overall H1-H6 decision is an intersection-union rule; descriptive 95% Wilson and simultaneous Bonferroni-Wilson intervals are both reported",
+  "gate_labels": ["M4_TRANSFER_NULL_PASS", "M4_TRANSFER_NULL_PARTIAL", "M4_TRANSFER_NULL_FAIL", "M4_TRANSFER_NULL_INVALID"],
+  "forbidden": ["M4 modification", "M4.1", "M4.2", "M5", "scenario-specific calibration", "post-hoc severity change", "replacement seeds", "alternatives", "power", "changepoint", "OhioT1DM", "Phase 3", "RS-CUSUM-RL 1.0.2"]
+}

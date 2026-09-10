@@ -1,0 +1,134 @@
+# Frozen Phase-1 protocol for Risk-set and Support-Aware CUSUM-RL.
+#
+# This file was frozen before any RS-CUSUM statistic, bootstrap null draw,
+# p-value, change-point estimate, or OhioT1DM RS-CUSUM outcome was computed.
+# Any amendment must create a new version and document an outcome-blind reason.
+protocol:
+  name: "OhioT1DM risk-set and support-aware CUSUM-RL"
+  version: "1.0.1-phase1"
+  frozen_on: "2026-08-28"
+  status: "phase1_method_frozen"
+  source_mdp_protocol: "configs/mdp_5min_protocol.yaml"
+  source_mdp_sha256: "D0D4C9D19DEE704E4DF81A51F8B20BEC272494D6825E2DD16C0E1772F04F6B2C"
+  permitted_now:
+    - "module implementation"
+    - "deterministic unit tests"
+    - "small synthetic degeneration diagnostics"
+  prohibited_now:
+    - "formal OhioT1DM CUSUM statistic"
+    - "formal bootstrap"
+    - "p-value"
+    - "change-point estimation"
+    - "Round 2"
+    - "Round 3"
+    - "Round 4"
+  amendments:
+    - version: "1.0.1-phase1"
+      reason: "Outcome-blind code audit: influence must differentiate the Bellman fixed-point equation, not only the one-step Ridge regression loss. Added -gamma next-greedy feature and +alpha I to W."
+      evidence: "src/compute_test_statistics.py q_learning.fit W_mat construction and direct estimating-equation differentiation"
+
+risk_panel:
+  interval_min: 5
+  patient_identity: "original patient_id is the independent cluster across every segment and re-entry"
+  elapsed_index_formula: "round((tau_t - patient_recording_start) / 5 minutes)"
+  elapsed_rounding: "nearest integer; nonnegative exact half ties round upward"
+  no_elapsed_time_compression: true
+  max_abs_lattice_residual_min: 0.5
+  duplicate_patient_elapsed_index: "hard error"
+  transition_edge_gap_min: [4.5, 5.5]
+  output_fields:
+    - patient_id
+    - split
+    - clock_type
+    - elapsed_index
+    - tau_t
+    - tau_next
+    - state
+    - next_state
+    - action
+    - reward_binary
+    - reward_weighted
+    - segment_id
+    - valid_reason
+  clocks:
+    training:
+      recording_start: "first timestamp of that patient's training record"
+    testing_reset:
+      recording_start: "first timestamp of that patient's testing record"
+    testing_continuous:
+      recording_start: "first timestamp of that patient's training record"
+      construction_requirement: "state histories must be rebuilt from the continuous training+testing event stream"
+    mixing_rule: "never combine records from different clock_type values in one analysis"
+
+reentry:
+  main_rule: "allow_after_continuous_120min_cgm_burnin"
+  initial_record_history_min: 240
+  post_gap_continuous_cgm_burnin_min: 120
+  post_gap_required_valid_5min_edges: 24
+  state_history_may_use_record_history_min: 240
+  gap_segment_remains_same_patient_cluster: true
+  sensitivity_rule: "allow_sparse_real_history_after_gap"
+  sensitivity_description: "after a valid local edge, permit re-entry without 120 minutes of continuous CGM; use only genuinely observed past records, never interpolation"
+
+mdp:
+  state_dimension: 21
+  feature_map: "action-specific linear state features with intercept"
+  action_values: [0, 1]
+  per_action_parameter_dimension: 22
+  total_q_parameter_dimension: 44
+  reward_primary: "binary_tir"
+  reward_sensitivity: "clinically_weighted"
+  gamma: 0.9825931938526898
+
+fqi:
+  estimator: "patient_balanced_ridge_fqi"
+  transition_weight: "1 / (number of contributing patients * patient transitions on that side)"
+  all_valid_transitions: true
+  action_downsampling: false
+  ridge_alpha: 1.0
+  penalize_intercept: true
+  max_iterations: 800
+  tolerance: 1.0e-5
+  convergence_norm: "L2 norm of consecutive coefficient vectors"
+  solve: "symmetric linear system; no broad exception fallback"
+
+statistic:
+  left_interval: "analysis_start <= elapsed_index < u"
+  right_interval: "u <= elapsed_index < analysis_end"
+  contributing_patients: "union of original patients observed on the left or right; missing side contribution is zero"
+  patient_score: "within-patient mean Bellman score, centered across patients on that side"
+  influence_matrix: "patient-balanced mean phi_t (phi_t - gamma phi_next_greedy)^T plus ridge_alpha * identity"
+  finite_cluster_variance: "HC1 multiplier G/(G-1) applied to sum of squared patient contrast influences"
+  statistics:
+    normalized_max: "boundary_scale * max_z |Q_left(z)-Q_right(z)| / sqrt(cluster_variance(z))"
+    unnormalized_max: "boundary_scale * max_z |Q_left(z)-Q_right(z)|"
+    l1_integral: "boundary_scale * mean_z |Q_left(z)-Q_right(z)| on the fixed evaluation grid"
+  zero_variance: "candidate/evaluation point is not testable; never divide by zero"
+  evaluation_grid: "must be specified and frozen before outcome analysis; Phase 1 uses explicit toy grids only"
+
+boundary_scaling:
+  primary: "harmonic_active_patients"
+  rationale: "matches the original time factor in the balanced rectangular limit and discounts asymmetric patient risk sets without using outcomes"
+  sensitivity:
+    - "both_side_patients"
+    - "count_effective_risk"
+  nominal_time_factor: "sqrt(left_elapsed_length * right_elapsed_length / total_elapsed_length)"
+  both_side_patients: "nominal_time_factor * sqrt(number observed on both sides / total analysis patients)"
+  harmonic_active_patients: "nominal_time_factor * sqrt(harmonic_mean(left active, right active) / total analysis patients)"
+  count_effective_risk: "nominal_time_factor * sqrt(harmonic_mean(left count-ESS, right count-ESS) / total analysis patients)"
+
+bootstrap:
+  method: "patient_cluster_multiplier_null"
+  multiplier_distribution: "standard_normal"
+  cluster_unit: "original patient_id"
+  multiplier_reuse: "one multiplier per original patient, reused at every elapsed time and across all re-entry segments"
+  patient_influence_centering: true
+  admissible_candidate_set: "fixed from outcome-blind support screen before multiplier draws"
+  bootstrap_maximum: "same fixed admissible candidates and same statistic as observed"
+  variance_studentization: "fixed observed cluster variance; not re-estimated per draw"
+  p_value_in_phase1: false
+  seed: 20260828
+
+outputs:
+  root: "results_rs_cusum/phase1"
+  formal_result_root_forbidden: true

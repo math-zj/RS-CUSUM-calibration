@@ -1,0 +1,213 @@
+# Frozen before any Phase-2 multi-repetition simulation.
+protocol:
+  name: "RS-CUSUM-RL Phase 2 toy sanity and small calibration"
+  version: "1.0.0-phase2-pilot"
+  frozen_on: "2026-08-28"
+  status: "phase2_pilot_authorized"
+  parent_method_version: "1.0.1-phase1"
+  parent_main_sha256: "C5206542A4707011AE7883B9F926528581D61C64F9FC45A3A3FB81D2631EFA21"
+  parent_support_sha256: "D98448E7E7696F9E7A85E4A1301AA66B854CE202AE04F5935A1FFF7487F57C5C"
+  formal_ohiot1dm_gate: "CLOSED"
+  stop_if_parent_method_changes: true
+  method_revision_status_on_structural_failure: "PHASE_2_METHOD_REVISION_REQUIRED"
+
+simulation:
+  master_seed: 2026082801
+  interval_min: 5
+  patients: 12
+  state_dimension: 21
+  base_horizon_transitions: 240
+  unequal_horizon_transitions: 360
+  initial_record_history_transitions: 48
+  post_gap_burnin_transitions: 24
+  gamma: 0.9825931938526898
+  ridge_alpha: 1.0
+  fqi_max_iterations: 800
+  fqi_tolerance: 1.0e-5
+  state_ar: 0.72
+  nonphenotype_state_noise_sd: 0.45
+  reward_noise_sd: 0.60
+  patient_phenotype_feature_index: 1
+  action_state_coefficient: 0.35
+
+evaluation_grid:
+  construction: "outcome-blind patient-balanced deterministic state reference sample"
+  allowed_inputs: ["patient_id", "elapsed_index", "state"]
+  forbidden_inputs: ["reward", "Q", "statistic", "p_value", "estimated_change_point"]
+  seed: 9173
+  patient_order: "lexicographic patient_id"
+  within_patient_order: "fixed-seed permutation of elapsed-sorted current states"
+  allocation: "round-robin across patients without replacement until K states"
+  actions: [0, 1]
+  small_reference_states: 16
+  primary_reference_states: 32
+  large_reference_states: 64
+  primary: "32 states duplicated for actions 0 and 1, yielding 64 evaluation points"
+
+candidate_grid:
+  construction: "fixed fractions of the post-history analysis window"
+  fractions: [0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80]
+  integer_mapping: "analysis_start + round_half_up(fraction * (analysis_end-analysis_start))"
+  deduplicate: true
+  outcome_blind: true
+  no_peak_refinement: true
+
+primary_method:
+  name: "RS-full"
+  panel: "dynamic re-entry after 24 continuously observed transitions"
+  support: "primary"
+  estimator: "patient_balanced"
+  scaling: "harmonic_active_patients"
+  statistic: "normalized_max"
+  multiplier: "Gaussian patient-cluster"
+  p_value: "(1 + count(T_star >= T_observed)) / (B + 1)"
+
+stages:
+  stage_a:
+    replicates_each_core_scenario: 20
+    bootstrap_draws: 199
+    purpose: "crash/NaN/status/range/reproducibility smoke calibration"
+  stage_b:
+    replicates_each_scenario: 100
+    bootstrap_draws: 499
+    enter_only_if_stage_a_passes: true
+  bootstrap_sensitivity:
+    draws: [199, 999]
+    scenarios: ["N0_complete_balanced_null"]
+    replicates: 20
+
+nominal_alpha: [0.01, 0.05, 0.10]
+
+support_sensitivity:
+  thresholds: ["lenient", "primary", "strict"]
+  primary: "primary"
+  stage_b_scenarios:
+    - "N0_complete_balanced_null"
+    - "N4_rare_action_moderate_null"
+    - "N4_rare_action_low_null"
+    - "N4_rare_action_very_low_null"
+    - "N5_patient_dominance_null"
+    - "N6_missing_rare_unequal_null"
+    - "N7_risk_composition_shift_null"
+    - "A2_rare_action_change"
+
+scaling_sensitivity:
+  values: ["both_side_patients", "harmonic_active_patients", "count_effective_risk"]
+  primary: "harmonic_active_patients"
+  stage_b_scenarios:
+    - "N0_complete_balanced_null"
+    - "N3_unequal_length_null"
+    - "N5_patient_dominance_null"
+    - "N7_risk_composition_shift_null"
+
+grid_sensitivity:
+  values: ["small", "primary", "large"]
+  primary: "primary"
+  stage_b_scenarios: ["N0_complete_balanced_null", "N7_risk_composition_shift_null"]
+
+ablations:
+  original_rectangular:
+    scenarios: ["N0_complete_balanced_null", "A0_complete_balanced_change"]
+    definition: "complete rectangular normalized pooled FQI, original b0 scaling, transition-level Gaussian multiplier"
+  strict_first_gap_termination:
+    scenarios:
+      - "N1_monotone_dropout_null"
+      - "N2_intermittent_reentry_null"
+      - "N6_missing_rare_unequal_null"
+      - "A1_intermittent_change"
+    definition: "initial 48-step history then permanent termination at first invalid transition; same patient identity"
+  pooled_weight:
+    scenarios:
+      - "N2_intermittent_reentry_null"
+      - "N3_unequal_length_null"
+      - "N5_patient_dominance_null"
+      - "N6_missing_rare_unequal_null"
+      - "A3_unequal_dominance_change"
+    definition: "dynamic risk set and support with pooled transition FQI; patient-cluster bootstrap otherwise unchanged"
+  no_support:
+    scenarios:
+      - "N4_rare_action_moderate_null"
+      - "N4_rare_action_low_null"
+      - "N4_rare_action_very_low_null"
+      - "N5_patient_dominance_null"
+      - "N6_missing_rare_unequal_null"
+      - "A2_rare_action_change"
+    definition: "all raw candidates with at least one transition and patient per side; simulation diagnostic only"
+
+null_scenarios:
+  N0_complete_balanced_null:
+    horizon: 240
+    observation: "complete"
+    action_target: 0.50
+  N1_monotone_dropout_null:
+    horizon: 240
+    observation: "patient-specific permanent dropout uniformly between 55% and 100% of horizon"
+    action_target: 0.30
+  N2_intermittent_reentry_null:
+    horizon: 240
+    observation: "two interior gap episodes per patient, starts in fixed 38%-50% and 68%-80% windows, length 6-12"
+    action_target: 0.30
+  N3_unequal_length_null:
+    horizon: 360
+    observation: "four patients terminate at 40%, four at 67%, four at 100%"
+    action_target: 0.30
+  N4_rare_action_moderate_null:
+    horizon: 240
+    observation: "complete"
+    action_target: 0.15
+  N4_rare_action_low_null:
+    horizon: 240
+    observation: "complete"
+    action_target: 0.08
+  N4_rare_action_very_low_null:
+    horizon: 240
+    observation: "complete"
+    action_target: 0.035
+  N5_patient_dominance_null:
+    horizon: 240
+    observation: "patient 0 complete with higher behavior-policy action rate; others terminate between 48% and 72%"
+    action_target: 0.20
+  N6_missing_rare_unequal_null:
+    horizon: 240
+    observation: "unequal termination plus one or two interior gaps with re-entry"
+    action_target: 0.08
+  N7_risk_composition_shift_null:
+    horizon: 240
+    observation: "positive-phenotype half permanently drops at the analysis midpoint; conditional MDP law unchanged"
+    action_target: 0.30
+  N8_informative_missing_mild_null:
+    horizon: 240
+    observation: "gap-start hazard depends only on current state/action; baseline hazard 0.005"
+    action_target: 0.30
+  N8_informative_missing_strong_null:
+    horizon: 240
+    observation: "gap-start hazard depends only on current state/action; baseline hazard 0.015"
+    action_target: 0.30
+
+alternative_scenarios:
+  common_effect_levels: {weak: 0.25, moderate: 0.60, strong: 1.20}
+  rare_action_effect_levels: {weak: 0.50, moderate: 1.00, strong: 2.00}
+  A0_complete_balanced_change: {base: "N0_complete_balanced_null", change: "general reward and transition", true_cp_fraction: 0.50}
+  A1_intermittent_change: {base: "N2_intermittent_reentry_null", change: "general reward and transition", true_cp_fraction: 0.50}
+  A2_rare_action_change: {base: "N4_rare_action_low_null", change: "action-1 reward and transition interaction", true_cp_fraction: 0.50}
+  A3_unequal_dominance_change: {base: "N5_patient_dominance_null", change: "general reward and transition", true_cp_fraction: 0.50}
+
+gate:
+  immediate_type1_inflation_at_005: 0.15
+  numerical_failure_max: 0.05
+  yellow_flag_lower: 0.08
+  yellow_flag_upper: 0.15
+  stage_a_requires:
+    - "no unhandled crash"
+    - "no silent status conversion"
+    - "all computed p-values in [1/(B+1),1]"
+    - "estimated CP belongs to U_adm"
+    - "same seed deterministic"
+    - "cluster identity preserved"
+  phase2_outcomes: ["PHASE_2_PASS_TO_FULL_SIMULATION", "PHASE_2_FAIL", "PHASE_2_METHOD_REVISION_REQUIRED"]
+  formal_ohiot1dm_after_phase2: false
+
+outputs:
+  root: "results_rs_cusum/phase2"
+  replicate_format: "csv"
+  save_replicate_level: true

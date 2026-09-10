@@ -1,0 +1,160 @@
+protocol:
+  name: "RS-CUSUM-RL Phase 2R-G Fresh Locked N0 Confirmation"
+  label: "phase2rg-fresh-locked-n0-confirmation"
+  version: "1.0.0-g0"
+  frozen_on: "2026-09-01"
+  parent_method: "1.0.1-phase1"
+  phase2rd_gate_immutable: "M4_MECHANISM_JOINT_TAIL_FAIL"
+  phase2re_gate_immutable: "TAIL_METRIC_UNSTABLE"
+  phase2rf_gate_immutable: "M4_JOINT_TAIL_CONFIRMED"
+  validation_only: true
+  one_time_holdout: true
+  m4_modification: false
+  posthoc_calibration: false
+  mechanism_exploration: false
+  ohiot1dm_allowed: false
+  phase3_allowed: false
+  transfer_null_allowed: false
+  alternatives_allowed: false
+  power_allowed: false
+  changepoint_allowed: false
+  establish_1_0_2: false
+
+frozen_method:
+  candidate: "unchanged Phase 2R-D M4 used in Phase 2R-F"
+  scenario: "N0_complete_balanced_null"
+  scope_label: "Fresh Locked N0 Confirmation"
+  m4_engine_sha256: "EC7E7DA7D8625736CEAC2B872CD739DEBA29792CD535B8AD533D5266251AF977"
+  phase2rf_metric_sha256: "1C45FB63F5D3429C3A8BDA24355CD55BF81F823BEF0B20D0A2AE4AD988567F98"
+  evaluation_grid_file: "results_rs_cusum/phase2r/fixed_evaluation_grid.npz"
+  candidate_count: 7
+  evaluation_count: 64
+  process_dimension: 448
+  process_order: "candidate-major then evaluation-coordinate"
+  process_event: "absolute two-sided exceedance"
+  n0_subjects: 12
+  n0_horizon: 240
+  n0_analysis_start: 48
+
+sample_plan:
+  evidence_file: "results_rs_cusum/phase2rg/sample_size_precision_plan.csv"
+  evidence_source: "Phase 2R-F frozen outputs only; no Phase 2R-G formal draw"
+  oracle_banks: ["primary", "reference"]
+  oracle_processes_per_bank: 2500
+  oracle_processes_total: 5000
+  q99_expected_exceedances_per_coordinate: 25
+  oracle_chunk_size: 25
+  m4_outer_replicates: 300
+  m4_inner_draws_per_outer: 199
+  m4_processes_generated: 59700
+  m4_balanced_primary_processes: 2500
+  m4_balanced_selection: "all 300 outer clusters; first 9 inner draws for outer 0..99 and first 8 for outer 100..299"
+  rationale: "inherits the Phase 2R-F design that achieved EISJEM MC SE 0.001035 and CI width 0.004070, supplies about 25 q99 exceedances per coordinate, and gives D4 size MC SE about 0.0113 without increasing replication post hoc"
+
+primary_metric:
+  name: "excess integrated standardized joint-exceedance MAE"
+  symbol: "EISJEM"
+  implementation: "unchanged src/rs_cusum_phase2rf/metrics.py"
+  thresholds: [0.90, 0.95, 0.975, 0.99]
+  threshold_weights: [0.25, 0.25, 0.25, 0.25]
+  component: "mean over all ordered off-diagonal pairs of absolute joint-exceedance probability error divided by alpha=1-q"
+  raw_comparison: "ISJEM(oracle_primary, M4_balanced)"
+  noise_floor: "ISJEM(oracle_primary, oracle_reference)"
+  primary_contrast: "raw_comparison - noise_floor; not truncated at zero"
+  oracle_coordinate_thresholds: "estimated from fresh oracle_primary within each full or resampled comparison"
+  equivalence_margin: 0.015
+  pass_rule: "upper 95% cluster-bootstrap bound <= 0.015"
+
+secondary_metrics:
+  legacy_threshold: 0.95
+  legacy_raw_p95_conditional_gap: true
+  pair_error_quantiles: [0.50, 0.90, 0.95, 0.99]
+  threshold_tail_dependence_mae: true
+  threshold_joint_exceedance_mae: true
+  threshold_joint_exceedance_frobenius: true
+  threshold_sensitivity: [0.90, 0.95, 0.975, 0.99]
+  stable_major_legacy_threshold: 0.12
+  stable_major_legacy_rule: "legacy lower 95% cluster-bootstrap bound > 0.12 blocks joint-tail PASS"
+
+uncertainty:
+  bootstrap_replicates: 500
+  confidence_level: 0.95
+  oracle_resampling_unit: "process row, independently within primary and reference banks"
+  m4_resampling_unit: "outer dataset cluster; selected inner process block retained"
+  target_mc_standard_error_max: 0.0075
+  target_ci_width_max: 0.03
+
+domain_gates:
+  center:
+    mean_RMS_over_truth_SD_max: 0.15
+  covariance:
+    pointwise_SD_ratio: [0.85, 1.15]
+    leading_eigenvalue_ratio: [0.75, 1.25]
+    effective_rank_ratio: [0.65, 1.54]
+    correlation_frobenius_relative_error_max: 0.45
+    offdiagonal_correlation_MAE_max: 0.09
+  marginal_tail:
+    coordinate_q90_ratio: [0.85, 1.15]
+    coordinate_q95_ratio: [0.85, 1.15]
+    coordinate_q975_ratio: [0.80, 1.20]
+    coordinate_q99_ratio: [0.80, 1.20]
+    marginal_exceedance_MAE_max: 0.02
+    skewness_RMSE_max: 0.45
+    excess_kurtosis_RMSE_max: 1.40
+  joint_tail:
+    primary_mc_standard_error_max: 0.0075
+    primary_ci_width_max: 0.03
+    primary_ci_high_max: 0.015
+    q95_joint_exceedance_frobenius_relative_error_max: 1.10
+    q95_joint_exceedance_offdiagonal_MAE_max: 0.008
+    q95_tail_dependence_offdiagonal_MAE_max: 0.12
+    legacy_lower_ci_block_threshold: 0.12
+  max_distribution:
+    D2_KS_max: 0.20
+    D4_KS_max: 0.20
+    q95_ratio_D0_D3: [0.80, 1.20]
+    q95_ratio_D4: [0.88, 1.12]
+    probability_M4_D4_exceeds_oracle_q95: [0.02, 0.09]
+  type1:
+    size_005_max_each_D0_D4: 0.13
+    D4_size_001_max: 0.04
+    testable_fraction_min: 0.99
+    D4_nominal_005_within_Wilson_or_one_MCSE: true
+  engineering:
+    oracle_failure_rate_max: 0.01
+    m4_draw_failure_rate_max: 0.01
+    m4_outer_failure_rate_max: 0.01
+    finite_required: true
+    seed_disjoint_required: true
+    exact_m4_source_hash_required: true
+    exact_metric_source_hash_required: true
+    no_posthoc_tuning_required: true
+
+final_gate:
+  pass: "M4_FRESH_GLOBAL_NULL_PASS"
+  fail: "M4_FRESH_GLOBAL_NULL_FAIL"
+  invalid: "M4_FRESH_GLOBAL_NULL_INVALID"
+  pass_logic: "center AND covariance AND marginal_tail AND joint_tail AND max_distribution AND type1 AND engineering, with fresh seeds, exact hashes, and no post-hoc tuning"
+  fail_logic: "any required frozen scientific or inference-validation domain fails"
+  invalid_logic: "seed contamination, protocol violation, corrupted output, source hash mismatch, or unrecoverable engineering validity failure only"
+  no_rerun_after_scientific_fail: true
+
+seeds:
+  master_seed: 2026090107
+  registry_npz: "results_rs_cusum/phase2rg/seed_registry.npz"
+  registry_json: "results_rs_cusum/phase2rg/seed_registry.json"
+  width_bits: 64
+  disjoint_from_all_prior_registries: true
+
+execution:
+  deterministic_resume: true
+  atomic_checkpoint_writes: true
+  completed_seed_not_repeated: true
+  invalid_checkpoint_hard_fails: true
+  no_fallback: true
+  no_replication_increase_after_start: true
+
+outputs:
+  root: "results_rs_cusum/phase2rg"
+  report: "report/rs_cusum_phase2rg_report.md"
+

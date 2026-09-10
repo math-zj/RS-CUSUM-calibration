@@ -1,0 +1,129 @@
+protocol:
+  name: "RS-CUSUM-RL Phase 2R-E Joint-Tail Failure Localization"
+  label: "phase2re-joint-tail-localization"
+  version: "1.0.0"
+  frozen_on: "2026-08-31"
+  parent_phase: "Phase 2R-D"
+  parent_gate: "M4_MECHANISM_JOINT_TAIL_FAIL"
+  phase2rd_gate_must_remain: "M4_MECHANISM_JOINT_TAIL_FAIL"
+  method_optimization: false
+  m4_modification: false
+  new_method_allowed: false
+  d3_allowed: false
+  ohiot1dm_allowed: false
+  phase3_allowed: false
+  transfer_null_allowed: false
+  alternatives_allowed: false
+  power_allowed: false
+  changepoint_allowed: false
+  establish_1_0_2: false
+
+existing_draw_forensics:
+  input: "results_rs_cusum/phase2rd/d2_process_forensics.npz"
+  truth_key: "observed_joint"
+  m4_key: "M4__saved_direct_process"
+  truth_draws: 120
+  m4_outer_clusters: 120
+  saved_m4_draws_per_cluster: 100
+  process_shape: [7, 64]
+  candidates: [86, 106, 125, 144, 163, 182, 202]
+  evaluation_grid: "results_rs_cusum/phase2r/fixed_evaluation_grid.npz"
+  flattening: "candidate-major, then evaluation-coordinate"
+  primary_event: "absolute two-sided exceedance, matching frozen D4"
+  secondary_event: "signed upper-tail exceedance"
+  thresholds: [0.90, 0.95, 0.975, 0.99]
+  primary_threshold: 0.95
+  conditional_direction: "P(event_j | event_i); all ordered off-diagonal pairs"
+  top_pairs_saved: 500
+
+structure:
+  candidate_distance: "absolute candidate-grid index distance 0..6"
+  evaluation_coordinate: "0..63"
+  base_state: "evaluation coordinate modulo 32"
+  value_action: "0 for coordinates 0..31; 1 for 32..63"
+  coordinate_distance_bins: ["0", "1-3", "4-7", "8-15", "16-31", "32-63"]
+  global_distance_bins: ["1-7", "8-31", "32-63", "64-127", "128-255", "256+"]
+  natural_groups: ["same candidate", "candidate distance", "same evaluation point", "same base state", "same/cross value action", "same/cross phenotype", "same source patient"]
+
+mc_uncertainty:
+  pair_sample_size: 25000
+  bootstrap_replicates: 500
+  schemes: ["oracle rows only", "M4 outer clusters only", "both"]
+  m4_inner_draws_conditioned_as_saved: true
+  confidence_level: 0.95
+  oracle_subsample_sizes: [30, 60, 90, 120]
+  m4_outer_subsample_sizes: [30, 60, 90, 120]
+  m4_nested_draws_per_outer: [25, 50, 75, 100]
+  subsample_repetitions: 100
+  unstable_if:
+    mc_standard_error_greater_than: 0.04
+    or_confidence_interval_width_greater_than: 0.16
+    or_nested_subsample_range_greater_than: 0.10
+
+hybrid:
+  purpose: "mechanism diagnostics only; no arm is an inference candidate"
+  outer_replicates: 32
+  draws_per_outer_per_arm: 79
+  common_random_numbers_across_arms: true
+  arms:
+    - true_all
+    - fitted_all
+    - true_initial
+    - true_policy
+    - true_random_effect
+    - true_transition
+    - true_reward
+    - true_design
+    - true_innovation_scales
+    - true_structural_coefficients
+  truth_parameters:
+    initial_x0_beta: [0.0, 0.5]
+    initial_x0_sd: 0.7
+    initial_other_mean: 0.0
+    initial_other_sd: 0.7
+    action_beta: [0.0, 0.35, 0.20]
+    action_random_effect_sd: 0.15
+    transition_x0_beta: [0.0, 0.72, 0.12, 0.18]
+    transition_x0_sd: 0.45
+    transition_other_beta: [0.0, 0.55, 0.04]
+    transition_other_sd: 0.45
+    reward_beta: [0.0, 0.40, 0.10, 0.05, -0.20]
+    reward_sd: 0.60
+  fixed_pipeline: "unchanged Phase 2R-D support/FQI/W/Delta/V/full 7x64 statistic"
+  failures: "explicit; no fallback or arm replacement"
+
+localization_rules:
+  widespread_if: "at least 25% of ordered pairs have absolute conditional-error >0.10 OR top 5% contribute <30% of total absolute error"
+  sparse_extreme_if: "less than 10% exceed 0.10 AND top 5% contribute at least 40% of total absolute error"
+  direction_under_if_fraction_negative_at_least: 0.65
+  direction_over_if_fraction_positive_at_least: 0.65
+  marginal_tail_basic_correct_if:
+    mean_absolute_marginal_probability_error_max: 0.02
+    mean_abs_quantile_ratio_range: [0.80, 1.20]
+  threshold_worsens_if: "99% p95-distribution gap exceeds 90% gap by at least 0.05 and at least three successive thresholds are nondecreasing"
+  A_TAIL_SOURCE_LOCALIZED:
+    stable_metric_required: true
+    single_component_error_reduction_min: 0.50
+    rescued_p95_error_max: 0.08
+    advantage_over_next_single_component_min: 0.20
+  B_TAIL_SOURCE_PARTIALLY_LOCALIZED:
+    stable_metric_required: true
+    component_or_family_reduction_min: 0.25
+  C_TAIL_SOURCE_DIFFUSE:
+    stable_metric_required: true
+    distinct_single_components_with_reduction_min_0_20: 2
+  D_TAIL_METRIC_UNSTABLE:
+    triggered_by_any_mc_unstable_rule: true
+    overrides_component_localization: true
+  E_FORENSIC_INCONCLUSIVE: "default if no preceding rule is met"
+
+seeds:
+  master_seed: 2026083107
+  diagnostic_only: true
+  do_not_read_phase2rd_d3_arrays: true
+  registry: "results_rs_cusum/phase2re/seed_registry.npz"
+
+outputs:
+  root: "results_rs_cusum/phase2re"
+  report: "report/phase2re_tail_forensics_report.md"
+

@@ -1,0 +1,40 @@
+{
+  "phase": "Phase 2R-F",
+  "version": "1.0.0-f0",
+  "purpose": "independent oracle and stable joint-tail confirmation of unchanged M4",
+  "immutable_parent_gates": {
+    "Phase 2R-D": "M4_MECHANISM_JOINT_TAIL_FAIL",
+    "Phase 2R-E": "TAIL_METRIC_UNSTABLE"
+  },
+  "sample_plan": {
+    "oracle_banks": 2,
+    "oracle_processes_per_bank": 2500,
+    "oracle_processes_total": 5000,
+    "m4_outer_replicates": 300,
+    "m4_inner_draws": 199,
+    "m4_generated_processes": 59700,
+    "m4_primary_balanced_processes": 2500
+  },
+  "primary": {
+    "metric": "excess integrated standardized joint-exceedance MAE",
+    "thresholds": [0.9, 0.95, 0.975, 0.99],
+    "equivalence_margin": 0.015,
+    "mc_se_max": 0.0075,
+    "ci_width_max": 0.03,
+    "convergence_range_max": 0.02
+  },
+  "balanced_sizes": [120, 250, 500, 1000, 2500],
+  "uncertainty_replicates": 500,
+  "gate_labels": [
+    "M4_JOINT_TAIL_CONFIRMED",
+    "M4_STABLE_JOINT_TAIL_FAIL",
+    "JOINT_TAIL_VALIDATION_UNSTABLE",
+    "JOINT_TAIL_VALIDATION_INCONCLUSIVE"
+  ],
+  "prohibited": [
+    "M4 modification", "post-hoc calibration", "M4.1", "M4.2", "M5",
+    "Phase 2R-D D3", "OhioT1DM", "Phase 3", "transfer-null",
+    "alternatives", "power", "changepoint", "RS-CUSUM-RL 1.0.2"
+  ],
+  "confirmed_only_qualifies": "future Phase 2R-G Fresh Locked Global Null Confirmation"
+}

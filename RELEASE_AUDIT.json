@@ -1,0 +1,77 @@
+{
+  "code_files": 163,
+  "result_files": 5243,
+  "stages": [
+    "phase2",
+    "phase2r",
+    "phase2rb",
+    "phase2rc",
+    "phase2rd",
+    "phase2re",
+    "phase2rf",
+    "phase2rg",
+    "phase2rh",
+    "representative_altloc",
+    "m4_realdata_bridge_v0"
+  ],
+  "excluded_ohio_files": [
+    {
+      "path": "results_rs_cusum/ohio_final_empirical_application/figure1_observed_cusum_process.png",
+      "reason": "Patient-level timestamps/data or historical execution log; not needed for public aggregate results"
+    },
+    {
+      "path": "results_rs_cusum/ohio_final_empirical_application/formal.err.log",
+      "reason": "Patient-level timestamps/data or historical execution log; not needed for public aggregate results"
+    },
+    {
+      "path": "results_rs_cusum/ohio_final_empirical_application/formal.log",
+      "reason": "Patient-level timestamps/data or historical execution log; not needed for public aggregate results"
+    },
+    {
+      "path": "results_rs_cusum/ohio_final_empirical_application/FREEZE_INITIALIZATION_FAILURE_ARCHIVED.txt",
+      "reason": "Patient-level timestamps/data or historical execution log; not needed for public aggregate results"
+    },
+    {
+      "path": "results_rs_cusum/ohio_final_empirical_application/patient_trajectory_summary.csv",
+      "reason": "Patient-level timestamps/data or historical execution log; not needed for public aggregate results"
+    },
+    {
+      "path": "results_rs_cusum/ohio_final_empirical_application/PERSISTENCE_FIX_AUDIT.json",
+      "reason": "Patient-level timestamps/data or historical execution log; not needed for public aggregate results"
+    },
+    {
+      "path": "results_rs_cusum/ohio_final_empirical_application/PRE_PERSISTENCE_FAILURE",
+      "reason": "Patient-level timestamps/data or historical execution log; not needed for public aggregate results"
+    },
+    {
+      "path": "results_rs_cusum/ohio_final_empirical_application/PRE_PERSISTENCE_formal.err.log",
+      "reason": "Patient-level timestamps/data or historical execution log; not needed for public aggregate results"
+    },
+    {
+      "path": "results_rs_cusum/ohio_final_empirical_application/PRE_PERSISTENCE_formal.log",
+      "reason": "Patient-level timestamps/data or historical execution log; not needed for public aggregate results"
+    }
+  ],
+  "excluded_roots": [
+    "OhioT1DM/",
+    "results_mdp_gate/arrays/",
+    "results_round2/",
+    "results_round3/",
+    "results_round4/"
+  ],
+  "external_imports": [
+    "numpy",
+    "pandas",
+    "scipy",
+    "sklearn",
+    "matplotlib",
+    "yaml",
+    "PIL",
+    "pytest"
+  ],
+  "long_experiments_rerun": false,
+  "locked_m4_sha256": "ec7e7da7d8625736ceac2b872cd739deba29792cd535b8ad533d5266251af977",
+  "known_inherited_limitations": [
+    "parse_xml.py optional standalone demo imports absent configs.default_config; final run_mdp_gate.py imports only its parser function"
+  ]
+}

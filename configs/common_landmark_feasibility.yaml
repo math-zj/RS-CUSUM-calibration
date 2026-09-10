@@ -1,0 +1,51 @@
+# Purely temporal feasibility protocol. This file is never read by CUSUM,
+# bootstrap, p-value, or change-point entry points.
+study:
+  name: "Common landmark plus monotone censoring feasibility"
+  version: "1.0.0"
+  status: "pre_cusum_time_action_qc_only"
+  prohibited: ["CUSUM", "bootstrap", "p-value", "changepoint", "Round 2-4"]
+
+landmarks:
+  step_hours: 6
+  natural_hours: [0, 12, 24, 48, 72, 168]
+  separate_split_scan_end: "minimum patient record duration"
+  continuous_testing_scan_end: "maximum patient testing end from training start"
+
+entry:
+  # Start at the first real CGM boundary at/after the common elapsed landmark.
+  # Different patients can therefore enter at most five minutes apart in real
+  # elapsed time; this delay is recorded and never hidden.
+  first_boundary_at_or_after_landmark: true
+  max_entry_delay_min_exclusive: 5.0
+  record_history_burnin_min: 240
+  cgm_history_burnin_min: 120
+  cgm_history_required_preceding_edges: 24
+  cgm_burnin_legal_gap_min: [4.0, 6.0]
+
+followup:
+  nominal_interval_min: 5
+  # The four observed 4/6-minute edges are treated as clock jitter. Any edge
+  # outside this band terminates the subject permanently. Gaps >7.5 minutes
+  # are additionally labelled genuine missing gaps.
+  legal_adjacent_gap_min: [4.0, 6.0]
+  genuine_gap_threshold_min: 7.5
+  reentry_after_censoring: false
+  minimum_transitions_for_N_L: 1
+
+support:
+  candidate_u_step_hours: 6
+  followup_fractions: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
+  almost_no_action_thresholds: [5, 10]
+  low_active_patient_threshold: 2
+  patient_action_dominance_fraction: 0.5
+
+pareto:
+  maximize:
+    - eligible_patients
+    - median_T
+    - total_transitions
+    - total_action_positive
+    - worst_side_action_20_80
+    - minimum_active_patients_20_80
+
